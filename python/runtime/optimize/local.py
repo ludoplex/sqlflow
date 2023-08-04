@@ -56,7 +56,7 @@ def generate_model_with_data_frame(data_frame, variables, variable_type,
         raise ValueError("direction must be one of 'maximize' or 'minimize'")
 
     if not hasattr(pyomo_env, variable_type):
-        raise ValueError("cannot find variable type %s" % variable_type)
+        raise ValueError(f"cannot find variable type {variable_type}")
 
     variable_type = getattr(pyomo_env, variable_type)
 
@@ -82,7 +82,7 @@ def generate_model_with_data_frame(data_frame, variables, variable_type,
     try:
         global DATA_FRAME
         DATA_FRAME = data_frame
-        obj_func = eval("lambda model: %s" % obj_expr)
+        obj_func = eval(f"lambda model: {obj_expr}")
         model.objective = pyomo_env.Objective(rule=obj_func, sense=direction)
 
         for i, (expr, for_range, iter_vars) in enumerate(c_exprs):
@@ -100,7 +100,7 @@ def generate_model_with_data_frame(data_frame, variables, variable_type,
             else:
                 assert not iter_vars, \
                     "for_range and iter_vars must be both empty"
-                func = eval('lambda model: %s' % expr)
+                func = eval(f'lambda model: {expr}')
                 constraint = pyomo_env.Constraint(rule=func)
                 setattr(model, attr_name, constraint)
     finally:
@@ -149,8 +149,7 @@ def solve_model(model, solver):
             "all variables must be of the same data type"
 
     if has_error:
-        msg = 'Solve model error. Termination condition: {}.'\
-            .format(solved_results.solver.termination_condition)
+        msg = f'Solve model error. Termination condition: {solved_results.solver.termination_condition}.'
         raise ValueError(msg)
 
     np_dtype = np.int64 if model.x[0].is_integer() else np.float64
@@ -211,12 +210,7 @@ def save_solved_result_in_db(solved_result, data_frame, variables,
     """
     column_names = []
     for col in data_frame.columns:
-        found = False
-        for var in variables:
-            if var.lower() == col.lower():
-                found = True
-                break
-
+        found = any(var.lower() == col.lower() for var in variables)
         if found:
             column_names.append(col)
 
@@ -238,8 +232,8 @@ def save_solved_result_in_db(solved_result, data_frame, variables,
 
     print('Solved result is:')
     print(data_frame)
-    print('Saved in {}.'.format(result_table))
-    print('Objective value is {}'.format(solved_result[1]))
+    print(f'Saved in {result_table}.')
+    print(f'Objective value is {solved_result[1]}')
 
 
 def run_optimize_locally(datasource, select, variables, variable_type,

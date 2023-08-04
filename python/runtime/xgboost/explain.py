@@ -23,19 +23,18 @@ from runtime.dbapi.paiio import PaiIOConnection
 
 def infer_data_type(feature):
     if isinstance(feature, np.ndarray):
-        if feature.dtype == np.float32 or feature.dtype == np.float64:
+        if feature.dtype in [np.float32, np.float64]:
             return 'float32'
-        elif feature.dtype == np.int32 or feature.dtype == np.int64:
+        elif feature.dtype in [np.int32, np.int64]:
             return 'int64'
         else:
-            raise ValueError('Not supported data type {}'.format(
-                feature.dtype))
+            raise ValueError(f'Not supported data type {feature.dtype}')
     elif isinstance(feature, (np.float32, np.float64, float)):
         return 'float32'
     elif isinstance(feature, (np.int32, np.int64, six.integer_types)):
         return 'int64'
     else:
-        raise ValueError('Not supported data type {}'.format(type(feature)))
+        raise ValueError(f'Not supported data type {type(feature)}')
 
 
 def xgb_shap_dataset(datasource,
@@ -67,8 +66,7 @@ def xgb_shap_dataset(datasource,
     sizes = []
     offsets = []
 
-    i = 0
-    for row, label in stream():
+    for i, (row, label) in enumerate(stream()):
         features = db.read_features_from_row(row,
                                              selected_cols,
                                              feature_column_names,
@@ -117,15 +115,14 @@ def xgb_shap_dataset(datasource,
                 if end - start == 1:
                     column_names.append(feature_names[j])
                 else:
-                    for k in six.moves.range(start, end):
-                        column_names.append('{}_{}'.format(
-                            feature_names[j], k))
-
+                    column_names.extend(
+                        f'{feature_names[j]}_{k}'
+                        for k in six.moves.range(start, end)
+                    )
             xs = pd.DataFrame(columns=column_names)
 
         xs.loc[i] = flatten_features
 
-        i += 1
     # NOTE(typhoonzero): set dtype to the feature's actual type, or the dtype
     # may be "object". Use below code to reproduce:
     # import pandas as pd
@@ -181,8 +178,7 @@ result to a table.""")
         else:
             conn = db.connect_with_data_source(datasource)
 
-        all_feature_keys = list(gain_map.keys())
-        all_feature_keys.sort()
+        all_feature_keys = sorted(gain_map.keys())
         with db.buffered_db_writer(conn, result_table,
                                    ["feature", "fscore", "gain"], 100) as w:
             for fkey in all_feature_keys:
@@ -245,10 +241,7 @@ def shap_explain(datasource,
         # use the first dimension here, should find out
         # when to use the other two. When shap_values is
         # not a list it can be directly used.
-        if isinstance(shap_values, list):
-            to_write = shap_values[0]
-        else:
-            to_write = shap_values
+        to_write = shap_values[0] if isinstance(shap_values, list) else shap_values
         write_shap_values(to_write, conn, result_table, feature_column_names)
 
     if summary_params.get("plot_type") == "decision":

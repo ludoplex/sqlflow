@@ -26,16 +26,14 @@ def estimator_train_and_save(estimator, model_params, save, FLAGS,
                              save_checkpoints_steps, metric_names, load,
                              model_meta):
     print("Start training using estimator model...")
-    is_distributed = False
-    if len(FLAGS.worker_hosts.split(",")) > 1:
-        is_distributed = True
+    is_distributed = len(FLAGS.worker_hosts.split(",")) > 1
     model_params["config"] = make_estimator_distributed_runconfig(
         FLAGS,
         estimator,
         is_distributed,
         save_checkpoints_steps=save_checkpoints_steps)
     ckpt_dir = FLAGS.checkpointDir if FLAGS.checkpointDir else save
-    print("Using checkpoint path: %s" % ckpt_dir)
+    print(f"Using checkpoint path: {ckpt_dir}")
     model_params["model_dir"] = ckpt_dir
 
     if load:

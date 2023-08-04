@@ -90,10 +90,10 @@ def _find_python_module_path(module):
 
 
 def _copy_python_package(module, dest):
-    module_path = _find_python_module_path(module)
-    if not module_path:
-        raise SQLFlowDiagnostic("Can't find module %s" % module)
-    shutil.copytree(module_path, path.join(dest, path.basename(module_path)))
+    if module_path := _find_python_module_path(module):
+        shutil.copytree(module_path, path.join(dest, path.basename(module_path)))
+    else:
+        raise SQLFlowDiagnostic(f"Can't find module {module}")
 
 
 def _copy_custom_package(estimator, dst):

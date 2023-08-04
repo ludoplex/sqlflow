@@ -38,7 +38,7 @@ def save_model_to_local_file(booster, model_params, file_name):
         None.
     """
     objective = model_params.get("objective")
-    bst_meta = dict()
+    bst_meta = {}
 
     if objective.startswith("binary:") or objective.startswith("multi:"):
         if objective.startswith("binary:"):
@@ -64,8 +64,7 @@ def save_model_to_local_file(booster, model_params, file_name):
     elif objective.startswith("rank:"):
         model = xgb.XGBRanker()
     else:
-        raise ValueError(
-            "Not supported objective {} for saving PMML".format(objective))
+        raise ValueError(f"Not supported objective {objective} for saving PMML")
 
     model_type = type(model).__name__
     bst_meta["type"] = model_type

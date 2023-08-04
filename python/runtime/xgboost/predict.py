@@ -67,7 +67,7 @@ def pred_imp(datasource,
              feature_column_code="",
              rank=0,
              nworkers=1):
-    print("rank={} nworkers={}".format(rank, nworkers))
+    print(f"rank={rank} nworkers={nworkers}")
     if not is_pai:
         conn = db.connect_with_data_source(datasource)
     else:
@@ -91,24 +91,21 @@ def pred_imp(datasource,
         raw_data_dir="predict.raw.dir")  # NOTE: default to use external memory
     bst = xgb.Booster({'nthread': 4})  # init model
     bst.load_model("my_model")  # load data
-    print("{} Start predicting XGBoost model...".format(datetime.now()))
+    print(f"{datetime.now()} Start predicting XGBoost model...")
     if not model_params:
         model_params = load_metadata("model_meta.json")["attributes"]
 
     selected_cols = db.selected_cols(conn, select)
 
-    feature_file_id = 0
     train_label_name = train_label_meta["feature_name"]
     pred_label_name = pred_label_meta["feature_name"]
-    for pred_dmatrix in dpred:
+    for feature_file_id, pred_dmatrix in enumerate(dpred):
         predict_and_store_result(bst, pred_dmatrix, feature_file_id,
                                  model_params, selected_cols, train_label_name,
                                  pred_label_name, feature_column_names,
                                  feature_metas, is_pai, conn, result_table,
                                  rank)
-        feature_file_id += 1
-    print("{} Done predicting. Predict table: {}".format(
-        datetime.now(), result_table))
+    print(f"{datetime.now()} Done predicting. Predict table: {result_table}")
 
 
 def predict_and_store_result(bst,
@@ -130,21 +127,17 @@ def predict_and_store_result(bst,
         # binary:hinge output class labels
         if obj == "binary:logistic":
             preds = (preds > 0.5).astype(int)
-        elif obj == "multi:softprob":
-            preds = np.argmax(np.array(preds), axis=1)
         elif obj == "multi:softmax":
             # multi:softmax output class labels
             # Need to convert to int. Otherwise, the
             # table writer of MaxCompute would cause
             # error because of writing float values.
             preds = np.array(preds).astype(int)
-        # TODO(typhoonzero): deal with binary:logitraw when needed.
-    else:
-        # prediction output with multi-class job has two dimensions, this
-        # is a temporary way, can remove this else branch when we can load
-        # the model meta not only on PAI submitter.
-        if len(preds.shape) == 2:
+        elif obj == "multi:softprob":
             preds = np.argmax(np.array(preds), axis=1)
+            # TODO(typhoonzero): deal with binary:logitraw when needed.
+    elif len(preds.shape) == 2:
+        preds = np.argmax(np.array(preds), axis=1)
 
     if is_pai:
         feature_file_read = open("predict.txt.raw", "r")

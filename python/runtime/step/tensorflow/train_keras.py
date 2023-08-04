@@ -47,11 +47,7 @@ def keras_train_and_save(estimator, model_params, save, FLAGS,
             six.reraise(*sys.exc_info())
 
     train_dataset = train_dataset_fn()
-    if val_dataset_fn is not None:
-        validate_dataset = val_dataset_fn()
-    else:
-        validate_dataset = None
-
+    validate_dataset = val_dataset_fn() if val_dataset_fn is not None else None
     if load:
         # FIXME(typhoonzero): copied from runtime.tensorflow.train_keras
         inputs, targets = next(iter(train_dataset.take(1)))
@@ -122,4 +118,4 @@ def keras_train_distributed(classifier,
         fn.write(export_path_str)
     # write model metadata to model_meta.json
     save_metadata("model_meta.json", model_meta)
-    print("Done training, model exported to: %s" % export_path_str)
+    print(f"Done training, model exported to: {export_path_str}")

@@ -55,7 +55,7 @@ def get_explain_random_forests_cmd(datasource, model_name, data_table,
 
     conn = db.connect_with_data_source(datasource)
     # drop result table if exists
-    conn.execute("DROP TABLE IF EXISTS %s;" % result_table)
+    conn.execute(f"DROP TABLE IF EXISTS {result_table};")
     schema = db.get_table_schema(conn, data_table)
     fields = [f[0] for f in schema if f[0] != label_column]
     return ('''pai -name feature_importance -project algo_public '''
@@ -101,20 +101,27 @@ def get_pai_explain_cmd(datasource, project, oss_model_path, model_name,
         The command to submit a PAI explain task
     """
     if model_type == EstimatorType.PAIML:
-        cmd = get_explain_random_forests_cmd(datasource, model_name,
-                                             data_table, result_table,
-                                             label_name)
-    else:
-        conf = cluster_conf.get_cluster_config(model_params)
-        cmd = get_pai_tf_cmd(conf, job_file, params_file, ENTRY_FILE,
-                             model_name, oss_model_path, data_table, "",
-                             result_table, project)
-    return cmd
+        return get_explain_random_forests_cmd(
+            datasource, model_name, data_table, result_table, label_name
+        )
+    conf = cluster_conf.get_cluster_config(model_params)
+    return get_pai_tf_cmd(
+        conf,
+        job_file,
+        params_file,
+        ENTRY_FILE,
+        model_name,
+        oss_model_path,
+        data_table,
+        "",
+        result_table,
+        project,
+    )
 
 
 def add_env_to_params(params, env_name, param_name):
     env = os.getenv(env_name)
-    assert env, "%s cannot be empty" % env
+    assert env, f"{env} cannot be empty"
     params[param_name] = env
 
 
@@ -164,12 +171,12 @@ def submit_pai_explain(datasource,
     project = table_ops.get_project(datasource)
     if result_table:
         if result_table.count(".") == 0:
-            result_table = "%s.%s" % (project, result_table)
+            result_table = f"{project}.{result_table}"
         params["result_table"] = result_table
 
     # used to save the explain image
     timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
-    params["oss_dest"] = "explain_images/%s/%s" % (user, timestamp)
+    params["oss_dest"] = f"explain_images/{user}/{timestamp}"
     add_env_to_params(params, "SQLFLOW_OSS_AK", "oss_ak")
     add_env_to_params(params, "SQLFLOW_OSS_SK", "oss_sk")
     add_env_to_params(params, "SQLFLOW_OSS_ALISA_ENDPOINT", "oss_endpoint")
@@ -209,17 +216,25 @@ def submit_pai_explain(datasource,
 
         if not try_pai_local_run(params, oss_model_path):
             with temp_file.TemporaryDirectory(prefix="sqlflow",
-                                              dir="/tmp") as cwd:
+                                                          dir="/tmp") as cwd:
                 prepare_archive(cwd, estimator, oss_model_path, params)
                 cmd = get_pai_explain_cmd(
-                    datasource, project, oss_model_path, model, data_table,
-                    result_table, model_type, model_params,
-                    "file://" + os.path.join(cwd, JOB_ARCHIVE_FILE),
-                    "file://" + os.path.join(cwd, PARAMS_FILE), label_name)
+                    datasource,
+                    project,
+                    oss_model_path,
+                    model,
+                    data_table,
+                    result_table,
+                    model_type,
+                    model_params,
+                    f"file://{os.path.join(cwd, JOB_ARCHIVE_FILE)}",
+                    f"file://{os.path.join(cwd, PARAMS_FILE)}",
+                    label_name,
+                )
                 submit_pai_task(cmd, datasource)
 
     if result_table:
-        print('Saved result into: {}'.format(result_table))
+        print(f'Saved result into: {result_table}')
     else:
         print_oss_image(params["oss_dest"], params["oss_ak"], params["oss_sk"],
                         params["oss_endpoint"], params["oss_bucket_name"])

@@ -34,11 +34,11 @@ else:
 
 
 def get_tf_optimizer(optimizer):
-    return eval("tf_optimizers." + optimizer)
+    return eval(f"tf_optimizers.{optimizer}")
 
 
 def get_tf_loss(loss):
-    return eval("tf_loss." + loss)
+    return eval(f"tf_loss.{loss}")
 
 
 # NOTE(typhoonzero): workflow step entry for codegen/experimental,
@@ -73,7 +73,7 @@ def train_step(original_sql,
     else:
         load = None
 
-    is_pai = True if pai_table else False
+    is_pai = bool(pai_table)
 
     fc_map = compile_ir_feature_columns(feature_column_map,
                                         EstimatorType.TENSORFLOW)
@@ -88,7 +88,7 @@ def train_step(original_sql,
         label_meta = label_column.get_field_desc()[0].to_dict(
             dtype_to_string=True)
 
-    feature_column_names_map = dict()
+    feature_column_names_map = {}
     for target in feature_column_map:
         fclist = feature_column_map[target]
         feature_column_names_map[target] = [
@@ -126,8 +126,7 @@ def train_step(original_sql,
     is_estimator = is_tf_estimator(estimator)
 
     # always use verbose == 1 when using PAI to get more logs
-    if verbose < 1:
-        verbose = 1
+    verbose = max(verbose, 1)
     set_log_level(verbose, is_estimator)
 
     model_params_constructed.update(fc_map)
@@ -191,6 +190,6 @@ def train_step(original_sql,
         saved = model.save_to_db(datasource,
                                  save,
                                  oss_model_dir=FLAGS.sqlflow_oss_modeldir)
-        print("Model saved to DB: %s" % saved)
+        print(f"Model saved to DB: {saved}")
 
     print("Done training")

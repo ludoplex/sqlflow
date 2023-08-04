@@ -232,11 +232,11 @@ def submit_local_run(datasource, select, image_name, params, into):
         SQLFLOW_TO_RUN_CONTEXT_KEY_INTO: into,
         SQLFLOW_TO_RUN_CONTEXT_KEY_IMAGE: image_name
     }
-    subprocess_env.update(update_env)
+    subprocess_env |= update_env
 
     program_file_path = pathlib.Path(params[0])
     if not program_file_path.is_file:
-        raise ValueError("{} is not a file".format(params[0]))
+        raise ValueError(f"{params[0]} is not a file")
 
     sub_process = None
     file_ext = program_file_path.suffix
@@ -262,7 +262,7 @@ def submit_local_run(datasource, select, image_name, params, into):
         print(sub_process.stdout.decode("utf-8"))
         if sub_process.returncode != 0:
             print(sub_process.stderr.decode("utf-8"), file=sys.stderr)
-            raise RuntimeError("Executing {} failed.".format(params[0]))
+            raise RuntimeError(f"Executing {params[0]} failed.")
 
 
 def submit_local_show_train(datasource, model_name):

@@ -28,9 +28,7 @@ class PaiXGBoostWorker():
         each_sleep = 30
         while True:
             if int(time.time()) - started > ttl:
-                raise Exception(
-                    "failed to read the tracker port in {} seconds".format(
-                        ttl))
+                raise Exception(f"failed to read the tracker port in {ttl} seconds")
             conn = None
             try:
                 conn = http.client.HTTPConnection(host=host,
@@ -52,9 +50,9 @@ class PaiXGBoostWorker():
             raise Exception("bad response from tracker, empty port")
         return [
             str.encode('DMLC_NUM_WORKER=%d' % nworkers),
-            str.encode('DMLC_TRACKER_URI=%s' % host),
-            str.encode('DMLC_TRACKER_PORT=%s' % tracker_port),
-            str.encode('DMLC_TASK_ID=%d' % task_id)
+            str.encode(f'DMLC_TRACKER_URI={host}'),
+            str.encode(f'DMLC_TRACKER_PORT={tracker_port}'),
+            str.encode('DMLC_TASK_ID=%d' % task_id),
         ]
 
 

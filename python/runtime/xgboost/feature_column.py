@@ -231,10 +231,9 @@ def categorical_column_with_hash_bucket(key, hash_bucket_size, dtype='string'):
 
 class IndicatorColumnTransformer(BaseColumnTransformer):
     def __init__(self, categorical_column):
-        assert isinstance(categorical_column, CategoricalColumnTransformer), \
-            "categorical_column must be type of " \
-            "CategoricalColumnTransformer but got {}".format(
-                type(categorical_column))
+        assert isinstance(
+            categorical_column, CategoricalColumnTransformer
+        ), f"categorical_column must be type of CategoricalColumnTransformer but got {type(categorical_column)}"
         self.categorical_column = categorical_column
 
     def _set_feature_column_names(self, names):
@@ -276,7 +275,7 @@ class ComposedColumnTransformer(BaseColumnTransformer):
         for column in columns:
             assert isinstance(column, BaseColumnTransformer)
 
-        assert len(columns) != 0, "No feature column found"
+        assert columns, "No feature column found"
 
         self.columns = columns
         self._set_feature_column_names(feature_column_names)
@@ -293,4 +292,4 @@ class ComposedColumnTransformer(BaseColumnTransformer):
             column._set_feature_column_names(names)
 
     def __call__(self, inputs):
-        return tuple([column(inputs) for column in self.columns])
+        return tuple(column(inputs) for column in self.columns)

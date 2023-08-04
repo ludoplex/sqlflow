@@ -42,7 +42,7 @@ def train(original_sql,
           load=None,
           pai_table="",
           pai_val_table=""):
-    is_pai = True if pai_table != "" else False
+    is_pai = pai_table != ""
     is_dist_train = False
     FLAGS = None
     oss_model_dir = ""
@@ -72,7 +72,7 @@ def train(original_sql,
 
     batch_size = train_params.pop("batch_size", None)
     epoch = train_params.pop("epoch", 1)
-    load_pretrained_model = True if load else False
+    load_pretrained_model = bool(load)
     disk_cache = train_params.pop("disk_cache", False)
 
     if is_dist_train:
@@ -182,7 +182,7 @@ def local_train(original_sql,
         else:
             val_dataset = None
 
-        eval_result = dict()
+        eval_result = {}
         watchlist = [None]
         if val_dataset:
             # The `xgboost.train` API only accepts the XGBoost DMatrix
@@ -200,7 +200,7 @@ def local_train(original_sql,
                             evals_result=eval_result,
                             xgb_model=bst,
                             **train_params)
-            print("Evaluation result: %s" % eval_result)
+            print(f"Evaluation result: {eval_result}")
 
     meta = collect_metadata(original_sql=original_sql,
                             select=select,

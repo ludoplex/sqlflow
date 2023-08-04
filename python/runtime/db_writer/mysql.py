@@ -27,9 +27,7 @@ class MySQLDBWriter(BufferedDBWriter):
     """
     def __init__(self, conn, table_name, table_schema, buff_size):
         super().__init__(conn, table_name, table_schema, buff_size)
-        self.statement = '''insert into {} ({}) values({})'''.format(
-            self.table_name, ", ".join(self.table_schema),
-            ", ".join(["%s"] * len(self.table_schema)))
+        self.statement = f'''insert into {self.table_name} ({", ".join(self.table_schema)}) values({", ".join(["%s"] * len(self.table_schema))})'''
 
     def flush(self):
         """

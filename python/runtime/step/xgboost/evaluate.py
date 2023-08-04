@@ -79,8 +79,9 @@ def evaluate(datasource,
             model = Model.load_from_db(datasource, model)
             bst.load_model("my_model")
     else:
-        assert isinstance(model,
-                          Model), "not supported model type %s" % type(model)
+        assert isinstance(
+            model, Model
+        ), f"not supported model type {type(model)}"
         bst.load_model("my_model")
 
     model_params = model.get_meta("attributes")
@@ -100,7 +101,7 @@ def evaluate(datasource,
     transform_fn = ComposedColumnTransformer(
         feature_column_names, *feature_columns["feature_columns"])
 
-    is_pai = True if pai_table else False
+    is_pai = bool(pai_table)
     if is_pai:
         conn = PaiIOConnection.from_table(pai_table)
     else:
@@ -125,10 +126,7 @@ def evaluate(datasource,
             feature_column_code=fc_map_ir)
 
         for i, pred_dmatrix in enumerate(dpred):
-            if is_pai:
-                feature_file_name = pred_fn
-            else:
-                feature_file_name = pred_fn + "_%d" % i
+            feature_file_name = pred_fn if is_pai else pred_fn + "_%d" % i
             preds = _calc_predict_result(bst, pred_dmatrix, model_params)
             _store_evaluate_result(preds, feature_file_name, train_label_desc,
                                    result_table, result_column_names,
@@ -156,24 +154,23 @@ def _store_evaluate_result(preds, feature_file_name, label_desc, result_table,
     """
     y_test = []
     with open(feature_file_name, 'r') as f:
-        for line in f.readlines():
-            row = [i for i in line.strip().split("\t")]
+        for line in f:
+            row = list(line.strip().split("\t"))
             # DMatrix store label in the first column
             if label_desc.dtype == DataType.INT64:
                 y_test.append(int(row[0]))
             elif label_desc.dtype == DataType.FLOAT32:
                 y_test.append(float(row[0]))
             else:
-                raise TypeError("unsupported data type {}".format(
-                    label_desc.dtype))
+                raise TypeError(f"unsupported data type {label_desc.dtype}")
 
     y_test = np.array(y_test)
 
-    evaluate_results = dict()
+    evaluate_results = {}
     for metric_name in validation_metrics:
         metric_name = metric_name.strip()
         if metric_name not in SKLEARN_METRICS:
-            raise ValueError("unsupported metrics %s" % metric_name)
+            raise ValueError(f"unsupported metrics {metric_name}")
         metric_func = getattr(sklearn.metrics, metric_name)
         metric_value = metric_func(y_test, preds)
         evaluate_results[metric_name] = metric_value
@@ -181,6 +178,5 @@ def _store_evaluate_result(preds, feature_file_name, label_desc, result_table,
     # write evaluation result to result table
     with db.buffered_db_writer(conn, result_table, result_column_names) as w:
         row = ["0.0"]
-        for mn in validation_metrics:
-            row.append(str(evaluate_results[mn]))
+        row.extend(str(evaluate_results[mn]) for mn in validation_metrics)
         w.write(row)

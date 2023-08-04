@@ -131,7 +131,7 @@ class TestFeatureDerivationWithMockedFeatures(unittest.TestCase):
             FieldDesc(name="class", dtype=DataType.INT64, shape=[1]))
 
         select = "select c1, c2, c3, c4, c5, c6, class " \
-                 "from feature_derivation_case.train"
+                     "from feature_derivation_case.train"
         conn = testing.get_singleton_db_connection()
         features, label = fd.infer_feature_columns(conn, select, features,
                                                    label)
@@ -213,8 +213,7 @@ class TestFeatureDerivationWithMockedFeatures(unittest.TestCase):
         self.assertEqual(field_desc.format, DataFormat.PLAIN)
         self.assertFalse(field_desc.is_sparse)
         self.assertEqual(field_desc.shape, [1])
-        self.assertEqual(field_desc.vocabulary, set(['FEMALE', 'MALE',
-                                                     'NULL']))
+        self.assertEqual(field_desc.vocabulary, {'FEMALE', 'MALE', 'NULL'})
         self.assertEqual(fc6.dimension, 128)
         self.assertEqual(fc6.combiner, "sum")
         self.assertEqual(fc6.name, "c6")
@@ -347,7 +346,7 @@ class TestFeatureDerivationWithMockedFeatures(unittest.TestCase):
             "petal_width",
         ]
 
-        select = "select %s, class from iris.train" % ",".join(columns)
+        select = f'select {",".join(columns)}, class from iris.train'
 
         conn = testing.get_singleton_db_connection()
         features = None

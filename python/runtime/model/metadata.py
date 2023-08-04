@@ -49,9 +49,8 @@ def collect_metadata(original_sql,
     """
     metadata = dict(locals())
 
-    kwargs = metadata.pop('kwargs')
-    if kwargs:
-        metadata.update(kwargs)
+    if kwargs := metadata.pop('kwargs'):
+        metadata |= kwargs
 
     attr_copy = copy.deepcopy(attributes)
     for (k, v) in attr_copy.items():

@@ -27,16 +27,14 @@ def estimator_train_and_save_legacy(estimator, model_params, save, FLAGS,
                                     metric_names, load_pretrained_model,
                                     model_meta):
     print("Start training using estimator model...")
-    is_distributed = False
-    if len(FLAGS.worker_hosts.split(",")) > 1:
-        is_distributed = True
+    is_distributed = len(FLAGS.worker_hosts.split(",")) > 1
     model_params["config"] = make_estimator_distributed_runconfig(
         FLAGS,
         estimator,
         is_distributed,
         save_checkpoints_steps=save_checkpoints_steps)
     ckpt_dir = FLAGS.checkpointDir if FLAGS.checkpointDir else save
-    print("Using checkpoint path: %s" % ckpt_dir)
+    print(f"Using checkpoint path: {ckpt_dir}")
     model_params["model_dir"] = ckpt_dir
     model_params["config"] = tf.estimator.RunConfig(
         tf_random_seed=get_tf_random_seed(),
@@ -84,7 +82,7 @@ def estimator_save(classifier, save, model_params, model_meta):
         fn.write(export_path_str)
     # write model metadata to model_meta.json
     save_metadata("model_meta.json", model_meta)
-    print("Done training, model exported to: %s" % export_path_str)
+    print(f"Done training, model exported to: {export_path_str}")
 
 
 def estimator_train_compiled(estimator, train_dataset_fn, val_dataset_fn,
@@ -97,9 +95,9 @@ def estimator_train_compiled(estimator, train_dataset_fn, val_dataset_fn,
             input_fn=lambda: val_dataset_fn(),
             start_delay_secs=eval_start_delay_secs,
             throttle_secs=eval_throttle_secs)
-        result = tf.estimator.train_and_evaluate(estimator, train_spec,
-                                                 eval_spec)
-        if result:
+        if result := tf.estimator.train_and_evaluate(
+            estimator, train_spec, eval_spec
+        ):
             print(result[0])
     else:
         # NOTE(typhoonzero): if only do training, no validation result will be

@@ -29,7 +29,7 @@ def get_mysql_dsn():
     pwd = os.getenv("SQLFLOW_TEST_DB_MYSQL_PASSWD", "root")
     net = os.getenv("SQLFLOW_TEST_DB_MYSQL_NET", "tcp")
     addr = os.getenv("SQLFLOW_TEST_DB_MYSQL_ADDR", "127.0.0.1:3306")
-    return "%s:%s@%s(%s)/iris?maxAllowedPacket=0" % (usr, pwd, net, addr)
+    return f"{usr}:{pwd}@{net}({addr})/iris?maxAllowedPacket=0"
 
 
 def get_hive_dsn():
@@ -69,7 +69,7 @@ def get_maxcompute_dsn():
             k, v = item.split("=")
             params[k] = v
 
-        endpoint = endpoint[0:idx]
+        endpoint = endpoint[:idx]
 
     if scheme and 'scheme' not in params:
         params['scheme'] = scheme
@@ -77,10 +77,10 @@ def get_maxcompute_dsn():
     params["curr_project"] = project
     params_str = ""
     if params:
-        params_str = "&".join(["%s=%s" % (k, v) for k, v in params.items()])
-        params_str = "?" + params_str
+        params_str = "&".join([f"{k}={v}" for k, v in params.items()])
+        params_str = f"?{params_str}"
 
-    return "%s:%s@%s%s" % (ak, sk, endpoint, params_str)
+    return f"{ak}:{sk}@{endpoint}{params_str}"
 
 
 def get_datasource():
@@ -92,9 +92,9 @@ def get_datasource():
     elif driver == "maxcompute":
         dsn = get_maxcompute_dsn()
     else:
-        raise ValueError("unsupported driver %s" % driver)
+        raise ValueError(f"unsupported driver {driver}")
 
-    return driver + "://" + dsn
+    return f"{driver}://{dsn}"
 
 
 SINGLETON_DB_CONNECTION = None

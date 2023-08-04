@@ -21,7 +21,7 @@ class PAIMaxComputeDBWriter(BufferedDBWriter):
                                                     table_schema, buff_size)
         splits = table_name.split(".")
         assert len(splits) == 2
-        table_name_formatted = "odps://%s/tables/%s" % (splits[0], splits[1])
+        table_name_formatted = f"odps://{splits[0]}/tables/{splits[1]}"
         try:
             wr = paiio.TableWriter
         except Exception:

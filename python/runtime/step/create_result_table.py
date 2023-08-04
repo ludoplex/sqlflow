@@ -50,11 +50,10 @@ def create_predict_table(conn,
     if train_label_index >= 0:
         del name_and_types[train_label_index]
 
-    column_strs = []
-    for name, typ in name_and_types:
-        column_strs.append("%s %s" %
-                           (name, db.to_db_field_type(conn.driver, typ)))
-
+    column_strs = [
+        f"{name} {db.to_db_field_type(conn.driver, typ)}"
+        for name, typ in name_and_types
+    ]
     if train_label_desc and train_label_desc.format == DataFormat.PLAIN:
         train_label_field_type = DataType.to_db_field_type(
             conn.driver, train_label_desc.dtype)
@@ -64,14 +63,11 @@ def create_predict_table(conn,
         train_label_field_type = DataType.to_db_field_type(
             conn.driver, DataType.STRING)
 
-    column_strs.append("%s %s" % (pred_label_name, train_label_field_type))
+    column_strs.append(f"{pred_label_name} {train_label_field_type}")
     str_dtype = DataType.to_db_field_type(conn.driver, DataType.STRING)
-    for c in extra_result_cols:
-        column_strs.append("%s %s" % (c, str_dtype))
-
-    drop_sql = "DROP TABLE IF EXISTS %s;" % result_table
-    create_sql = "CREATE TABLE %s (%s);" % (result_table,
-                                            ",".join(column_strs))
+    column_strs.extend(f"{c} {str_dtype}" for c in extra_result_cols)
+    drop_sql = f"DROP TABLE IF EXISTS {result_table};"
+    create_sql = f'CREATE TABLE {result_table} ({",".join(column_strs)});'
     conn.execute(drop_sql)
     conn.execute(create_sql)
     result_column_names = [item[0] for item in name_and_types]
@@ -94,13 +90,10 @@ def create_evaluate_table(conn, result_table, validation_metrics):
     """
     result_columns = ['loss'] + validation_metrics
     float_field_type = DataType.to_db_field_type(conn.driver, DataType.FLOAT32)
-    column_strs = [
-        "%s %s" % (name, float_field_type) for name in result_columns
-    ]
+    column_strs = [f"{name} {float_field_type}" for name in result_columns]
 
-    drop_sql = "DROP TABLE IF EXISTS %s;" % result_table
-    create_sql = "CREATE TABLE %s (%s);" % (result_table,
-                                            ",".join(column_strs))
+    drop_sql = f"DROP TABLE IF EXISTS {result_table};"
+    create_sql = f'CREATE TABLE {result_table} ({",".join(column_strs)});'
     conn.execute(drop_sql)
     conn.execute(create_sql)
 
@@ -109,7 +102,7 @@ def create_evaluate_table(conn, result_table, validation_metrics):
 
 def create_explain_table(conn, model_type, explainer, estimator_string,
                          result_table, feature_column_names):
-    drop_sql = "DROP TABLE IF EXISTS %s;" % result_table
+    drop_sql = f"DROP TABLE IF EXISTS {result_table};"
     conn.execute(drop_sql)
 
     if model_type == EstimatorType.PAIML:
@@ -138,9 +131,6 @@ def create_explain_table(conn, model_type, explainer, estimator_string,
         dtypes = [DataType.to_db_field_type(conn.driver, DataType.FLOAT32)
                   ] * len(columns)
 
-    column_strs = [
-        "%s %s" % (name, dtype) for name, dtype in zip(columns, dtypes)
-    ]
-    create_sql = "CREATE TABLE %s (%s);" % (result_table,
-                                            ",".join(column_strs))
+    column_strs = [f"{name} {dtype}" for name, dtype in zip(columns, dtypes)]
+    create_sql = f'CREATE TABLE {result_table} ({",".join(column_strs)});'
     conn.execute(create_sql)

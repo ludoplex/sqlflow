@@ -60,7 +60,7 @@ def submit_pai_evaluate(datasource,
     params = dict(locals())
     project = table_ops.get_project(datasource)
     if result_table.count(".") == 0:
-        result_table = "%s.%s" % (project, result_table)
+        result_table = f"{project}.{result_table}"
     params["result_table"] = result_table
 
     oss_model_path = pai_model.get_oss_model_save_path(datasource,
@@ -96,7 +96,15 @@ def submit_pai_evaluate(datasource,
         with temp_file.TemporaryDirectory(prefix="sqlflow", dir="/tmp") as cwd:
             prepare_archive(cwd, estimator, oss_model_path, params)
             cmd = get_pai_tf_cmd(
-                conf, "file://" + os.path.join(cwd, JOB_ARCHIVE_FILE),
-                "file://" + os.path.join(cwd, PARAMS_FILE), ENTRY_FILE, model,
-                oss_model_path, data_table, "", result_table, project)
+                conf,
+                f"file://{os.path.join(cwd, JOB_ARCHIVE_FILE)}",
+                f"file://{os.path.join(cwd, PARAMS_FILE)}",
+                ENTRY_FILE,
+                model,
+                oss_model_path,
+                data_table,
+                "",
+                result_table,
+                project,
+            )
             submit_pai_task(cmd, datasource)

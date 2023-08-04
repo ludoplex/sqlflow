@@ -30,31 +30,34 @@ def create_predict_result_table(datasource, select, result_table, label_column,
         model_type: type of model defined in runtime.model.oss
     """
     conn = db.connect_with_data_source(datasource)
-    conn.execute("DROP TABLE IF EXISTS %s" % result_table)
+    conn.execute(f"DROP TABLE IF EXISTS {result_table}")
     # PAI ml will create result table itself
     if model_type == EstimatorType.PAIML:
         return
 
-    create_table_sql = "CREATE TABLE %s AS SELECT * FROM %s LIMIT 0" % (
-        result_table, select)
+    create_table_sql = (
+        f"CREATE TABLE {result_table} AS SELECT * FROM {select} LIMIT 0"
+    )
     conn.execute(create_table_sql)
 
     # if label is not in data table, add a int column for it
     schema = db.get_table_schema(conn, result_table)
-    col_type = "INT"
-    for (name, ctype) in schema:
-        if name == train_label_column or name == label_column:
-            col_type = ctype
-            break
+    col_type = next(
+        (
+            ctype
+            for name, ctype in schema
+            if name in [train_label_column, label_column]
+        ),
+        "INT",
+    )
     col_names = [col[0] for col in schema]
     if label_column not in col_names:
-        conn.execute(
-            conn, "ALTER TABLE %s ADD %s %s" %
-            (result_table, label_column, col_type))
+        conn.execute(conn, f"ALTER TABLE {result_table} ADD {label_column} {col_type}")
     if train_label_column != label_column and train_label_column in col_names:
         conn.execute(
-            conn, "ALTER TABLE %s DROP COLUMN %s" %
-            (result_table, train_label_column))
+            conn,
+            f"ALTER TABLE {result_table} DROP COLUMN {train_label_column}",
+        )
 
 
 def get_create_shap_result_sql(conn, data_table, result_table, label_column):
@@ -70,9 +73,8 @@ def get_create_shap_result_sql(conn, data_table, result_table, label_column):
         a sql statement to create SHAP result table
     """
     schema = db.get_table_schema(conn, data_table)
-    fields = ["%s STRING" % f[0] for f in schema if f[0] != label_column]
-    return "CREATE TABLE IF NOT EXISTS %s (%s)" % (result_table,
-                                                   ",".join(fields))
+    fields = [f"{f[0]} STRING" for f in schema if f[0] != label_column]
+    return f'CREATE TABLE IF NOT EXISTS {result_table} ({",".join(fields)})'
 
 
 def create_evaluate_result_table(datasource, result_table, metrics):
@@ -88,8 +90,7 @@ def create_evaluate_result_table(datasource, result_table, metrics):
     ext_metrics = ["loss"]
     if isinstance(metrics, list):
         ext_metrics.extend(metrics)
-    fields = ["%s STRING" % m for m in ext_metrics]
-    sql = "CREATE TABLE IF NOT EXISTS %s (%s);" % (result_table,
-                                                   ",".join(fields))
+    fields = [f"{m} STRING" for m in ext_metrics]
+    sql = f'CREATE TABLE IF NOT EXISTS {result_table} ({",".join(fields)});'
     conn = db.connect_with_data_source(datasource)
     conn.execute(sql)

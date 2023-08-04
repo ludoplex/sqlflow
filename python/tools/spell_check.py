@@ -21,9 +21,7 @@ from spellchecker import SpellChecker
 def spell_check():
     spell = SpellChecker()
     spell.word_frequency.load_words(known)
-    num = 0
-    for line in sys.stdin.readlines():
-        num += 1
+    for num, line in enumerate(sys.stdin.readlines(), start=1):
         words = list(
             filter(
                 lambda w: w.lower() not in known and w[0] not in "'0123456789"
@@ -38,11 +36,10 @@ def spell_check():
                          identifier))
             # Get the one `most likely` answer
             for word in misspelled:
-                print('#', num, identifier, '\t',
-                      "s/%s/%s" % (word, spell.correction(word)))
+                print('#', num, identifier, '\t', f"s/{word}/{spell.correction(word)}")
 
 
-known = set([
+known = {
     "",
     "''",
     "_",
@@ -69,7 +66,6 @@ known = set([
     "attr",
     "attrs",
     "backends",
-    "base64",
     "base64",
     "batchsize",
     "bigint",
@@ -124,15 +120,13 @@ known = set([
     "dockerfile",
     "dockerfiles",
     "docstring",
-    "docstring",
     "doesn't",
     "downloads",
     "dsn",
     "dtype",
     "elasticdl",
     "elasticdlpredict",
-    "elasticdltrain"
-    "elem",
+    "elasticdltrain" "elem",
     "elif",
     "else",
     "emacs",
@@ -141,13 +135,11 @@ known = set([
     "enum",
     "env",
     "environ",
-    "environ",
     "envs",
     "eof",
     "errorf",
     "estimator",
     "etype",
-    "eval",
     "eval",
     "explainer",
     "expr",
@@ -169,7 +161,6 @@ known = set([
     "func",
     "getenv",
     "getpid",
-    "getpid",
     "github",
     "gitlab",
     "go",
@@ -184,7 +175,6 @@ known = set([
     "goroutines",
     "goto",
     "govalidator",
-    "goyacc",
     "goyacc",
     "grads",
     "gz",
@@ -235,11 +225,9 @@ known = set([
     "kubernetes",
     "kwargs",
     "lexer",
-    "lexer",
     "lexers",
     "lexing",
-    "lhw362950217"
-    "linkedin",
+    "lhw362950217" "linkedin",
     "linux",
     "localhost",
     "logits",
@@ -337,7 +325,6 @@ known = set([
     "sqlfs",
     "sqlite",
     "sqlite's",
-    "sqlite's",
     "sqlite3",
     "squarederror",
     "stackoverflow",
@@ -369,8 +356,7 @@ known = set([
     "textfile",
     "tf",
     "thenewstack",
-    "timelines"
-    "timeout",
+    "timelines" "timeout",
     "timeout",
     "timeouts",
     "timestamp",
@@ -426,7 +412,7 @@ known = set([
     "yacc",
     "yancey1989",
     "youtube",
-])
+}
 
 if __name__ == "__main__":
     if "-h" in sys.argv:

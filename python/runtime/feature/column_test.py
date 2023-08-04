@@ -20,14 +20,15 @@ import runtime.feature.field_desc as fd
 
 class TestFeatureColumn(unittest.TestCase):
     def new_field_desc(self):
-        desc = fd.FieldDesc(name="my_feature",
-                            dtype=fd.DataType.FLOAT32,
-                            delimiter=",",
-                            format=fd.DataFormat.CSV,
-                            shape=[10],
-                            is_sparse=True,
-                            vocabulary=["a", "b", "c"])
-        return desc
+        return fd.FieldDesc(
+            name="my_feature",
+            dtype=fd.DataType.FLOAT32,
+            delimiter=",",
+            format=fd.DataFormat.CSV,
+            shape=[10],
+            is_sparse=True,
+            vocabulary=["a", "b", "c"],
+        )
 
     def check_serialize(self, feature_column):
         d = fc.FeatureColumn.to_dict(feature_column)

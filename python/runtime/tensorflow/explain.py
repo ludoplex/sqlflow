@@ -63,7 +63,7 @@ def explain(datasource,
             oss_endpoint=None,
             oss_bucket_name=None):
     estimator_cls = import_model(estimator_string)
-    is_pai = True if pai_table else False
+    is_pai = bool(pai_table)
     if is_pai:
         FLAGS = tf.app.flags.FLAGS
         model_params["model_dir"] = FLAGS.checkpointDir
@@ -236,9 +236,7 @@ def violin(df_dfc):
 def _get_color(value):
     """To make positive DFCs plot green, negative DFCs plot red."""
     green, red = sns.color_palette()[2:4]
-    if value >= 0:
-        return green
-    return red
+    return green if value >= 0 else red
 
 
 def _add_feature_values(feature_values, ax):
@@ -246,7 +244,7 @@ def _add_feature_values(feature_values, ax):
     x_coord = ax.get_xlim()[0]
     OFFSET = 0.15
     for y_coord, (feat_name, feat_val) in enumerate(feature_values.items()):
-        t = plt.text(x_coord, y_coord - OFFSET, '{}'.format(feat_val), size=12)
+        t = plt.text(x_coord, y_coord - OFFSET, f'{feat_val}', size=12)
         t.set_bbox(dict(facecolor='white', alpha=0.5))
     from matplotlib.font_manager import FontProperties
     font = FontProperties()

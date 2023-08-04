@@ -35,8 +35,9 @@ def predict_step(datasource,
     if isinstance(model, six.string_types):
         model = Model.load_from_db(datasource, model)
     else:
-        assert isinstance(model,
-                          Model), "not supported model type %s" % type(model)
+        assert isinstance(
+            model, Model
+        ), f"not supported model type {type(model)}"
 
     model_params = model.get_meta("attributes")
     train_fc_map = model.get_meta("features")
@@ -53,7 +54,7 @@ def predict_step(datasource,
     feature_columns = compile_ir_feature_columns(train_fc_map,
                                                  model.get_type())
 
-    is_pai = True if pai_table else False
+    is_pai = bool(pai_table)
     if is_pai:
         conn = PaiIOConnection.from_table(pai_table)
         select = None
@@ -61,11 +62,11 @@ def predict_step(datasource,
         conn = db.connect_with_data_source(datasource)
 
     label_name = result_column_names[-len(extra_result_cols) - 1]
-    selected_cols = result_column_names[0:-len(extra_result_cols) - 1]
+    selected_cols = result_column_names[:-len(extra_result_cols) - 1]
     if train_label_idx >= 0:
-        selected_cols = selected_cols[0:train_label_idx] + [
-            train_label_name
-        ] + selected_cols[train_label_idx:]
+        selected_cols = (
+            selected_cols[:train_label_idx] + [train_label_name]
+        ) + selected_cols[train_label_idx:]
 
     estimator = import_model(estimator_string)
     model_params.update(feature_columns)
@@ -90,5 +91,5 @@ def predict_step(datasource,
                           train_label_name, label_name, conn,
                           predict_generator, selected_cols)
 
-    print("Done predicting. Predict table : %s" % result_table)
+    print(f"Done predicting. Predict table : {result_table}")
     conn.close()

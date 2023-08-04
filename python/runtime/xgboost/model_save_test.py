@@ -41,7 +41,7 @@ class TestXGBoostModelSavingBase(unittest.TestCase):
         pass
 
     def pmml_filename(self):
-        return "{}.pmml".format(self.filename())
+        return f"{self.filename()}.pmml"
 
     def batch_size(self):
         return 1024

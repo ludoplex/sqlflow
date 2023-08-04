@@ -48,8 +48,9 @@ def predict(datasource,
             model = Model.load_from_db(datasource, model)
             bst.load_model("my_model")
     else:
-        assert isinstance(model,
-                          Model), "not supported model type %s" % type(model)
+        assert isinstance(
+            model, Model
+        ), f"not supported model type {type(model)}"
         bst.load_model("my_model")
 
     model_params = model.get_meta("attributes")
@@ -64,7 +65,7 @@ def predict(datasource,
     transform_fn = ComposedColumnTransformer(
         feature_column_names, *feature_columns["feature_columns"])
 
-    is_pai = True if pai_table else False
+    is_pai = bool(pai_table)
     if is_pai:
         conn = PaiIOConnection.from_table(pai_table)
     else:
@@ -100,7 +101,7 @@ def predict(datasource,
             preds = _calc_predict_result(bst, pred_dmatrix, model_params)
             _store_predict_result(preds, result_table, result_column_names,
                                   train_label_idx, feature_file_name, conn)
-        print("Done predicting. Predict table : %s" % result_table)
+        print(f"Done predicting. Predict table : {result_table}")
 
     conn.close()
 
@@ -161,7 +162,7 @@ def _store_predict_result(preds, result_table, result_column_names,
     with db.buffered_db_writer(conn, result_table, result_column_names) as w:
         with open(feature_file_name, "r") as feature_file_read:
             line_no = 0
-            for line in feature_file_read.readlines():
+            for line in feature_file_read:
                 if not line:
                     break
 

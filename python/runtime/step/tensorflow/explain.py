@@ -40,8 +40,7 @@ def print_image_as_base64_html(file_path):
     img = base64.b64encode(img)
     if six.PY3:
         img = img.decode('utf-8')
-    img = "<div align='center'><img src='data:image/png;base64,%s' /></div>" \
-          % img
+    img = f"<div align='center'><img src='data:image/png;base64,{img}' /></div>"
     print(img)
 
 
@@ -75,8 +74,9 @@ def explain_step(datasource,
     if isinstance(model, six.string_types):
         model = Model.load_from_db(datasource, model)
     else:
-        assert isinstance(model,
-                          Model), "not supported model type %s" % type(model)
+        assert isinstance(
+            model, Model
+        ), f"not supported model type {type(model)}"
 
     plot_type = model_params.get("summary.plot_type", "bar")
 
@@ -150,7 +150,7 @@ def _explain(datasource,
     model_params.update(feature_columns)
     pop_optimizer_and_loss(model_params)
 
-    is_pai = True if pai_table else False
+    is_pai = bool(pai_table)
 
     def _input_fn():
         dataset = input_fn(select,

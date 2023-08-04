@@ -81,14 +81,12 @@ def evaluate(datasource,
     if not model_params:
         model_params = load_metadata("model_meta.json")["attributes"]
     print("Start evaluating XGBoost model...")
-    feature_file_id = 0
-    for pred_dmatrix in dpred:
+    for feature_file_id, pred_dmatrix in enumerate(dpred):
         evaluate_and_store_result(bst, pred_dmatrix, feature_file_id,
                                   validation_metrics, model_params,
                                   feature_column_names, label_meta, is_pai,
                                   conn, result_table)
-        feature_file_id += 1
-    print("Done evaluating. Result table : %s" % result_table)
+    print(f"Done evaluating. Result table : {result_table}")
 
 
 def evaluate_and_store_result(bst, dpred, feature_file_id, validation_metrics,
@@ -104,12 +102,8 @@ def evaluate_and_store_result(bst, dpred, feature_file_id, validation_metrics,
         elif obj.startswith("multi:softprob"):
             preds = np.argmax(np.array(preds), axis=1)
         # TODO(typhoonzero): deal with binary:logitraw when needed.
-    else:
-        # prediction output with multi-class job has two dimensions, this
-        # is a temporary way, can remove this else branch when we can load
-        # the model meta not only on PAI submitter.
-        if len(preds.shape) == 2:
-            preds = np.argmax(np.array(preds), axis=1)
+    elif len(preds.shape) == 2:
+        preds = np.argmax(np.array(preds), axis=1)
 
     if is_pai:
         feature_file_read = open("predict.txt", "r")
@@ -118,24 +112,21 @@ def evaluate_and_store_result(bst, dpred, feature_file_id, validation_metrics,
 
     y_test_list = []
     for line in feature_file_read:
-        row = [i for i in line.strip().split(DMATRIX_FILE_SEP)]
+        row = list(line.strip().split(DMATRIX_FILE_SEP))
         # DMatrix store label in the first column
-        if label_meta["dtype"] == "float32" or label_meta[
-                "dtype"] == DataType.FLOAT32:
+        if label_meta["dtype"] in ["float32", DataType.FLOAT32]:
             label = float(row[0])
-        elif label_meta["dtype"] == "int64" or label_meta[
-                "dtype"] == "int32" or label_meta["dtype"] == DataType.INT64:
+        elif label_meta["dtype"] in ["int64", "int32", DataType.INT64]:
             label = int(row[0])
         else:
-            raise ValueError("unsupported label dtype: %s" %
-                             label_meta["dtype"])
+            raise ValueError(f'unsupported label dtype: {label_meta["dtype"]}')
         y_test_list.append(label)
     y_test = np.array(y_test_list)
 
-    evaluate_results = dict()
+    evaluate_results = {}
     for metric_name in validation_metrics:
         if metric_name not in SKLEARN_METRICS:
-            raise ValueError("unsupported metric: %s" % metric_name)
+            raise ValueError(f"unsupported metric: {metric_name}")
         metric_func = getattr(sklearn.metrics, metric_name)
         metric_value = metric_func(y_test, preds)
         evaluate_results[metric_name] = metric_value
@@ -144,6 +135,5 @@ def evaluate_and_store_result(bst, dpred, feature_file_id, validation_metrics,
     result_columns = ["loss"] + validation_metrics
     with db.buffered_db_writer(conn, result_table, result_columns, 100) as w:
         row = ["0.0"]
-        for mn in validation_metrics:
-            row.append(str(evaluate_results[mn]))
+        row.extend(str(evaluate_results[mn]) for mn in validation_metrics)
         w.write(row)

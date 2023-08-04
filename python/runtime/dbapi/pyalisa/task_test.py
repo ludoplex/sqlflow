@@ -53,10 +53,10 @@ class TestTask(unittest.TestCase):
     def test_exec_sql_exec(self):
         outtbl = "table_2"
         t = Task(Config.from_env())
-        code = "CREATE TABLE IF NOT EXISTS {}(c1 STRING);".format(outtbl)
+        code = f"CREATE TABLE IF NOT EXISTS {outtbl}(c1 STRING);"
         time.sleep(2)
         t.exec_sql(code, resultful=False)
-        code = "DESCRIBE {};".format(outtbl)
+        code = f"DESCRIBE {outtbl};"
         time.sleep(2)
         res = t.exec_sql(code, resultful=True)
         self.assertTrue(len(res["body"]) > 0)
@@ -65,7 +65,7 @@ class TestTask(unittest.TestCase):
         t = Task(Config.from_env())
         outtbl = "table_2"
         time.sleep(2)
-        code = "DROP TABLE IF EXISTS {}".format(outtbl)
+        code = f"DROP TABLE IF EXISTS {outtbl}"
         t.exec_sql(code)
 
         code = """import argparse
@@ -78,7 +78,7 @@ if __name__ == "__main__":
     print(input_table.schema)
     output_table = o.create_table(output_table_name, input_table.schema)
         """
-        args = "input_table=table_1 output_table={}".format(outtbl)
+        args = f"input_table=table_1 output_table={outtbl}"
         time.sleep(2)
         res = t.exec_pyodps(code, args)
         print(res)

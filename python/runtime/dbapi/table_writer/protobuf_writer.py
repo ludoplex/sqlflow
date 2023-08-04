@@ -30,8 +30,7 @@ class ProtobufWriter(object):
             for field_name in header:
                 head.column_names.append(field_name)
 
-        self.all_responses = []
-        self.all_responses.append(sqlflow_pb2.Response(head=head))
+        self.all_responses = [sqlflow_pb2.Response(head=head)]
         for row in result_set:
             pb_row = sqlflow_pb2.Row()
             for col in row:
@@ -53,11 +52,11 @@ class ProtobufWriter(object):
         elif isinstance(value, str):
             v = wrappers_pb2.StringValue(value=value)
         else:
-            raise ValueError("not supported cell data type: %s" % type(value))
+            raise ValueError(f"not supported cell data type: {type(value)}")
         return v
 
     def dump_strings(self):
-        lines = []
-        for resp in self.all_responses:
-            lines.append(text_format.MessageToString(resp, as_one_line=True))
-        return lines
+        return [
+            text_format.MessageToString(resp, as_one_line=True)
+            for resp in self.all_responses
+        ]

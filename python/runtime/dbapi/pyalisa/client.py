@@ -249,22 +249,20 @@ class Client(object):
             columns.append({"name": str(name), "typ": str(typ)})
         body = []
         for m in json.loads(jsval['resultMsg']):
-            row = []
-            for i in ast.literal_eval(json.dumps(m)):
-                row.append(i)
+            row = list(ast.literal_eval(json.dumps(m)))
             body.append(row)
         return columns, body
 
     def _request_and_parse_response(self, action, params):
         params["Action"] = action
         params["ProjectEnv"] = self.config.env["SKYNET_SYSTEM_ENV"]
-        url = self.config.pop_scheme + "://" + self.config.pop_url
+        url = f"{self.config.pop_scheme}://{self.config.pop_url}"
         code, buf = Pop.request(url, params, self.config.pop_access_secret)
         resp = json.loads(buf)
         if code != 200:
-            raise RuntimeError("%s got a bad result, request=%s, response=%s" %
-                               (code, params, buf))
+            raise RuntimeError(
+                f"{code} got a bad result, request={params}, response={buf}"
+            )
         if resp['returnCode'] != '0':
-            raise Exception("returned an error request={}, response={}".format(
-                params, resp))
+            raise Exception(f"returned an error request={params}, response={resp}")
         return resp["returnValue"]

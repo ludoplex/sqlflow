@@ -57,9 +57,9 @@ class Pop(object):
         for k, v in sorted(params.items()):
             ek = Pop.percent_encode(k)
             ev = Pop.percent_encode(v)
-            qry += '&{}={}'.format(ek, ev)
-        str = '{}&%2F&{}'.format(http_method, Pop.percent_encode(qry[1:]))
-        dig = hmac.new(secret + '&', str, hashlib.sha1).digest()
+            qry += f'&{ek}={ev}'
+        str = f'{http_method}&%2F&{Pop.percent_encode(qry[1:])}'
+        dig = hmac.new(f'{secret}&', str, hashlib.sha1).digest()
         return base64.standard_b64encode(dig)
 
     @staticmethod

@@ -50,5 +50,4 @@ def submit_pai_task(pai_cmd, datasource):
     ]
     exitcode = run_command_and_log(cmd)
     if exitcode != 0:
-        raise SQLFlowDiagnostic("Execute odps cmd fail: cmd is %s" %
-                                " ".join(cmd))
+        raise SQLFlowDiagnostic(f'Execute odps cmd fail: cmd is {" ".join(cmd)}')

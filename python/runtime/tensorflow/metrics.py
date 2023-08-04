@@ -34,8 +34,8 @@ def check_supported(metrics):
     for mn in metrics:
         if mn not in supported_metrics:
             raise ValueError(
-                "metric name not supported %s, supported metrics: %s" %
-                (mn, supported_metrics))
+                f"metric name not supported {mn}, supported metrics: {supported_metrics}"
+            )
 
 
 def get_tf_metrics(metrics):
@@ -49,7 +49,7 @@ def get_tf_metrics(metrics):
                 metric.update_state(y_true=[labels],
                                     y_pred=predictions["logistic"])
             else:
-                metric = eval("tf.keras.metrics.%s()" % mn)
+                metric = eval(f"tf.keras.metrics.{mn}()")
                 if mn in metric_names_use_class_id:
                     metric.update_state(y_true=[labels],
                                         y_pred=predictions["class_ids"])
@@ -72,5 +72,5 @@ def get_keras_metrics(metrics):
         if mn == "AUC":
             m.append(tf.keras.metrics.AUC(num_thresholds=2000))
         else:
-            m.append(eval("tf.keras.metrics.%s()" % mn))
+            m.append(eval(f"tf.keras.metrics.{mn}()"))
     return m

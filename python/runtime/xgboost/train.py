@@ -55,7 +55,7 @@ def dist_train(flags,
     master_host = master_addr[0]
     master_port = int(master_addr[1]) + 1
     tracker = None
-    print("node={}, task_id={}, cluster={}".format(node, task_id, cluster))
+    print(f"node={node}, task_id={task_id}, cluster={cluster}")
     try:
         if node == 'ps':
             if task_id == 0:
@@ -96,7 +96,7 @@ def dist_train(flags,
                   model_repo_image=model_repo_image,
                   original_sql=original_sql)
     except Exception as e:
-        print("node={}, id={}, exception={}".format(node, task_id, e))
+        print(f"node={node}, id={task_id}, exception={e}")
         six.reraise(*sys.exc_info())  # For better backtrace
     finally:
         if tracker is not None:
@@ -173,14 +173,14 @@ def train(datasource,
         if len(validation_select.strip()) > 0:
             watchlist.append((dvalidate, "validate"))
 
-        re = dict()
+        re = {}
         bst = xgb.train(model_params,
                         per_batch_dmatrix,
                         evals=watchlist,
                         evals_result=re,
                         xgb_model=bst,
                         **train_params)
-        print("Evaluation result: %s" % re)
+        print(f"Evaluation result: {re}")
 
     if rank == 0:
         # TODO(sneaxiy): collect features and label
@@ -204,7 +204,7 @@ def train(datasource,
 def save_model(model_dir, filename, model_params, train_params, feature_metas,
                feature_column_names, label_meta, feature_column_code):
     pai_model_store.save_file(model_dir, filename)
-    pai_model_store.save_file(model_dir, "{}.pmml".format(filename))
+    pai_model_store.save_file(model_dir, f"{filename}.pmml")
     pai_model_store.save_file(model_dir, "model_meta.json")
     # (TODO:lhw) remove this function call, use the new metadata in load_metas
     pai_model_store.save_metas(

@@ -59,18 +59,35 @@ def get_pai_train_cmd(datasource, estimator_string, model_name, label_column,
 
     project = table_ops.get_project(datasource)
     if estimator_string.lower() == "randomforests":
-        cmd = get_train_random_forest_pai_cmd(model_name, train_table,
-                                              model_params,
-                                              feature_column_names, label_name)
+        return get_train_random_forest_pai_cmd(
+            model_name,
+            train_table,
+            model_params,
+            feature_column_names,
+            label_name,
+        )
     elif estimator_string.lower() == "kmeans":
-        cmd = get_train_kmeans_pai_cmd(datasource, model_name, train_table,
-                                       model_params, feature_column_names)
+        return get_train_kmeans_pai_cmd(
+            datasource,
+            model_name,
+            train_table,
+            model_params,
+            feature_column_names,
+        )
     else:
         conf = cluster_conf.get_cluster_config(train_params)
-        cmd = get_pai_tf_cmd(conf, job_file, params_file, ENTRY_FILE,
-                             model_name, path_to_save, train_table, val_table,
-                             "", project)
-    return cmd
+        return get_pai_tf_cmd(
+            conf,
+            job_file,
+            params_file,
+            ENTRY_FILE,
+            model_name,
+            path_to_save,
+            train_table,
+            val_table,
+            "",
+            project,
+        )
 
 
 def submit_pai_train(datasource,
@@ -133,12 +150,12 @@ def submit_pai_train(datasource,
         params["entry_type"] = "train_tf"
 
     with table_ops.create_tmp_tables_guard([select, validation_select],
-                                           datasource) as (train_table,
-                                                           val_table):
+                                               datasource) as (train_table,
+                                                               val_table):
         params["pai_table"], params["pai_val_table"] = train_table, val_table
 
         with connect_with_data_source(datasource) as conn:
-            actual_select = "SELECT * FROM %s;" % train_table
+            actual_select = f"SELECT * FROM {train_table};"
             feature_column_map, label_column = infer_feature_columns(
                 conn, actual_select, feature_column_map, label_column, n=1000)
             params["feature_column_map"] = feature_column_map
@@ -148,7 +165,7 @@ def submit_pai_train(datasource,
         oss_path_to_save = pai_model.get_oss_model_save_path(datasource,
                                                              save,
                                                              user=user)
-        pai_model.clean_oss_model_path(oss_path_to_save + "/")
+        pai_model.clean_oss_model_path(f"{oss_path_to_save}/")
         if try_pai_local_run(params, oss_path_to_save):
             return
 
@@ -158,10 +175,18 @@ def submit_pai_train(datasource,
 
             # submit pai task to execute the training
             cmd = get_pai_train_cmd(
-                datasource, estimator_string, save, label_column, train_table,
-                val_table, model_params, train_params, oss_path_to_save,
-                "file://" + os.path.join(cwd, JOB_ARCHIVE_FILE),
-                "file://" + os.path.join(cwd, PARAMS_FILE))
+                datasource,
+                estimator_string,
+                save,
+                label_column,
+                train_table,
+                val_table,
+                model_params,
+                train_params,
+                oss_path_to_save,
+                f"file://{os.path.join(cwd, JOB_ARCHIVE_FILE)}",
+                f"file://{os.path.join(cwd, PARAMS_FILE)}",
+            )
 
             submit_pai_task(cmd, datasource)
 
@@ -174,4 +199,4 @@ def submit_pai_train(datasource,
             }
             model = Model(EstimatorType.PAIML, meta)
             with temp_file.TemporaryDirectory(as_cwd=True) as cwd:
-                model.save_to_db(datasource, save + "_sqlflow_pai_model")
+                model.save_to_db(datasource, f"{save}_sqlflow_pai_model")

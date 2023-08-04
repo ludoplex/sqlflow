@@ -27,7 +27,7 @@ def get_oss_model_url(model_full_path):
     Returns:
         The OSS url of the model
     """
-    return "oss://%s/%s" % (oss.SQLFLOW_MODELS_BUCKET, model_full_path)
+    return f"oss://{oss.SQLFLOW_MODELS_BUCKET}/{model_full_path}"
 
 
 def drop_pai_model(datasource, model_name):
@@ -39,7 +39,7 @@ def drop_pai_model(datasource, model_name):
     """
     user, passwd, address, database = MaxComputeConnection.get_uri_parts(
         datasource)
-    cmd = "drop offlinemodel if exists %s" % model_name
+    cmd = f"drop offlinemodel if exists {model_name}"
     subprocess.run([
         "odpscmd", "-u", user, "-p", passwd, "--project", database,
         "--endpoint", address, "-e", cmd

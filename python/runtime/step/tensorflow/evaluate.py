@@ -34,8 +34,7 @@ from runtime.tensorflow.set_log_level import set_log_level
 try:
     tf.enable_eager_execution()
 except Exception as e:
-    sys.stderr.write("warning: failed to enable_eager_execution: %s" % e)
-    pass
+    sys.stderr.write(f"warning: failed to enable_eager_execution: {e}")
 
 
 def evaluate_step(datasource,
@@ -49,8 +48,9 @@ def evaluate_step(datasource,
     if isinstance(model, six.string_types):
         model = Model.load_from_db(datasource, model)
     else:
-        assert isinstance(model,
-                          Model), "not supported model type %s" % type(model)
+        assert isinstance(
+            model, Model
+        ), f"not supported model type {type(model)}"
 
     if model_params is None:
         model_params = {}
@@ -117,7 +117,7 @@ def _evaluate(datasource,
     is_estimator = is_tf_estimator(estimator_cls)
     set_log_level(verbose, is_estimator)
 
-    is_pai = True if pai_table else False
+    is_pai = bool(pai_table)
     eval_dataset = get_dataset_fn(select,
                                   datasource,
                                   feature_column_names,

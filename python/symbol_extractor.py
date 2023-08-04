@@ -81,8 +81,7 @@ def print_param_doc(*modules):
         models = filter(lambda m: inspect.isclass(m[1]),
                         inspect.getmembers(__import__(module)))
         for name, cls in models:
-            param_doc['{}.{}'.format(module,
-                                     name)] = parse_ctor_args(cls, ':param')
+            param_doc[f'{module}.{name}'] = parse_ctor_args(cls, ':param')
     print(json.dumps(param_doc))
 
 

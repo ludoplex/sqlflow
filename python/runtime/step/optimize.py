@@ -29,26 +29,26 @@ def _create_result_table(datasource, select, variables, result_value_name,
     elif variable_type.endswith('Reals'):
         result_type = DataType.FLOAT32
     else:
-        raise ValueError("unsupported variable type %s" % variable_type)
+        raise ValueError(f"unsupported variable type {variable_type}")
 
     conn = db.connect_with_data_source(datasource)
     name_and_types = dict(db.selected_columns_and_types(conn, select))
     columns = []
     for var in variables:
         field_type = db.to_db_field_type(conn.driver, name_and_types.get(var))
-        columns.append("%s %s" % (var, field_type))
+        columns.append(f"{var} {field_type}")
 
     if len(variables) == 1 and variables[0].lower() == result_value_name.lower(
     ):
         result_value_name += "_value"
 
-    columns.append("%s %s" %
-                   (result_value_name,
-                    DataType.to_db_field_type(conn.driver, result_type)))
+    columns.append(
+        f"{result_value_name} {DataType.to_db_field_type(conn.driver, result_type)}"
+    )
     column_str = ",".join(columns)
 
-    conn.execute("DROP TABLE IF EXISTS %s" % result_table)
-    create_sql = "CREATE TABLE %s (%s)" % (result_table, column_str)
+    conn.execute(f"DROP TABLE IF EXISTS {result_table}")
+    create_sql = f"CREATE TABLE {result_table} ({column_str})"
     conn.execute(create_sql)
     conn.close()
 
@@ -74,7 +74,7 @@ def run_optimize(datasource, select, variables, result_value_name,
             with db.connect_with_data_source(datasource) as conn:
                 schema = conn.get_table_schema(train_table)
                 columns = [s[0] for s in schema]
-                conn.execute("DROP TABLE IF EXISTS %s;" % result_table)
+                conn.execute(f"DROP TABLE IF EXISTS {result_table};")
 
             return run_optimize_on_optflow(train_table=train_table,
                                            columns=columns,

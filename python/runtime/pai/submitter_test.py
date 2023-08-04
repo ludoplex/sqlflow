@@ -103,10 +103,7 @@ USING e2etest_pai_dnn;"""
                      "skip non PAI tests")
 class SubmitPAITrainTask(TestCase):
     def test_submit_pai_train_task(self):
-        model_params = dict()
-        model_params["hidden_units"] = [10, 20]
-        model_params["n_classes"] = 3
-
+        model_params = {"hidden_units": [10, 20], "n_classes": 3}
         original_sql = """
 SELECT * FROM alifin_jtest_dev.sqlflow_test_iris_train
 TO TRAIN DNNClassifier
@@ -256,10 +253,7 @@ INTO alifin_jtest_dev.e2etest_random_forest_explain_result;"""
 class LocalRunPAITrainTask(TestCase):
     def test_pai_train_step(self):
         from runtime.step.tensorflow.train import train_step
-        model_params = dict()
-        model_params["hidden_units"] = [10, 20]
-        model_params["n_classes"] = 3
-
+        model_params = {"hidden_units": [10, 20], "n_classes": 3}
         original_sql = """
 SELECT * FROM alifin_jtest_dev.sqlflow_test_iris_train
 TO TRAIN DNNClassifier

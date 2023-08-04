@@ -21,49 +21,45 @@ from runtime.feature.field_desc import DataType
 
 
 def parse_sparse_feature(features, label, feature_column_names, feature_metas):
-    features_dict = dict()
+    features_dict = {}
     for idx, col in enumerate(features):
         name = feature_column_names[idx]
-        if feature_metas[name].get("delimiter_kv", "") != "":
-            # kv list that should be parsed to two features.
-            if feature_metas[name]["is_sparse"]:
-                features_dict[name] = tf.SparseTensor(
-                    col[0], tf.ones_like(tf.reshape(col[0], [-1])), col[2])
-                features_dict["_".join([name,
-                                        "weight"])] = tf.SparseTensor(*col)
-            else:
-                raise ValueError(
-                    "not supported DENSE column with key:value list format.")
+        if feature_metas[name].get("delimiter_kv", "") == "":
+            features_dict[name] = (
+                tf.SparseTensor(*col)
+                if feature_metas[name]["is_sparse"]
+                else col
+            )
+        elif feature_metas[name]["is_sparse"]:
+            features_dict[name] = tf.SparseTensor(
+                col[0], tf.ones_like(tf.reshape(col[0], [-1])), col[2])
+            features_dict["_".join([name,
+                                    "weight"])] = tf.SparseTensor(*col)
         else:
-            if feature_metas[name]["is_sparse"]:
-                # NOTE(sneaxiy): be careful that not all feature column APIs
-                # accept SparseTensor.
-                features_dict[name] = tf.SparseTensor(*col)
-            else:
-                features_dict[name] = col
+            raise ValueError(
+                "not supported DENSE column with key:value list format.")
     return features_dict, label
 
 
 def parse_sparse_feature_predict(features, feature_column_names,
                                  feature_metas):
-    features_dict = dict()
+    features_dict = {}
     for idx, col in enumerate(features):
         name = feature_column_names[idx]
-        if feature_metas[name].get("delimiter_kv", "") != "":
-            # kv list that should be parsed to two features.
-            if feature_metas[name]["is_sparse"]:
-                features_dict[name] = tf.SparseTensor(
-                    col[0], tf.ones_like(tf.reshape(col[0], [-1])), col[2])
-                features_dict["_".join([name,
-                                        "weight"])] = tf.SparseTensor(*col)
-            else:
-                raise ValueError(
-                    "not supported DENSE column with key:value list format.")
+        if feature_metas[name].get("delimiter_kv", "") == "":
+            features_dict[name] = (
+                tf.SparseTensor(*col)
+                if feature_metas[name]["is_sparse"]
+                else col
+            )
+        elif feature_metas[name]["is_sparse"]:
+            features_dict[name] = tf.SparseTensor(
+                col[0], tf.ones_like(tf.reshape(col[0], [-1])), col[2])
+            features_dict["_".join([name,
+                                    "weight"])] = tf.SparseTensor(*col)
         else:
-            if feature_metas[name]["is_sparse"]:
-                features_dict[name] = tf.SparseTensor(*col)
-            else:
-                features_dict[name] = col
+            raise ValueError(
+                "not supported DENSE column with key:value list format.")
     return features_dict
 
 
@@ -74,7 +70,6 @@ def get_dtype(type_str):
         return tf.int64
     elif type_str == "string":
         return tf.string
-    # FIXME(typhoonzero): add types to work with refactored code.
     elif type_str == DataType.INT64:
         return tf.int64
     elif type_str == DataType.FLOAT32:
@@ -82,7 +77,7 @@ def get_dtype(type_str):
     elif type_str == DataType.STRING:
         return tf.string
     else:
-        raise TypeError("not supported dtype: %s" % type_str)
+        raise TypeError(f"not supported dtype: {type_str}")
 
 
 def tf_generator(gen, selected_cols, feature_column_names, feature_metas):
@@ -126,10 +121,9 @@ def input_fn(select,
                 feature_types.append(
                     (get_dtype(feature_metas[name]["dtype"]),
                      get_dtype(feature_metas[name]["dtype_weight"]), tf.int64))
-                shapes.append((None, None, None))
             else:
                 feature_types.append((tf.int64, tf.int32, tf.int64))
-                shapes.append((None, None, None))
+            shapes.append((None, None, None))
         else:
             feature_types.append(get_dtype(feature_metas[name]["dtype"]))
             shapes.append(feature_metas[name]["shape"])
@@ -158,8 +152,10 @@ def input_fn(select,
             feature_metas=feature_metas)
     else:
         dataset = tf.data.Dataset.from_generator(
-            gen, (tuple(feature_types), eval("tf.%s" % label_meta["dtype"])),
-            (tuple(shapes), label_meta["shape"]))
+            gen,
+            (tuple(feature_types), eval(f'tf.{label_meta["dtype"]}')),
+            (tuple(shapes), label_meta["shape"]),
+        )
         ds_mapper = functools.partial(
             parse_sparse_feature,
             feature_column_names=feature_column_names,
@@ -171,42 +167,41 @@ def read_feature_as_tensor(raw_val, feature_spec, feature_name):
     # FIXME(typhoonzero): Should use correct dtype here.
     if feature_spec["delimiter"] == "":
         return [raw_val]
-    if feature_spec["is_sparse"]:
-        if feature_spec["delimiter_kv"] != "":
-            kvlist = tf.strings.split(raw_val,
-                                      feature_spec["delimiter"],
-                                      result_type='RaggedTensor')
-            kvsplited = tf.strings.split(
-                kvlist,
-                feature_spec["delimiter_kv"],
-                result_type='RaggedTensor').to_tensor()
-            # slice key tensor and value tensor
-            indices = tf.reshape(tf.slice(kvsplited, [0, 0], [-1, 1]), [-1])
-            indices = tf.expand_dims(
-                tf.strings.to_number(indices, feature_spec["dtype"]), 1)
-            # deal with empty strings or strings like "unkown", which
-            # tf.shape(kvsplited)[1] != 2
-            values = tf.cond(
-                tf.equal(tf.shape(kvsplited)[1],
-                         2), lambda: tf.strings.to_number(
-                             tf.reshape(tf.slice(kvsplited, [0, 1], [-1, 1]),
-                                        [-1]), feature_spec["dtype_weight"]),
-                lambda: tf.ones_like(indices, dtype=tf.float32))
-        else:
-            indices = tf.strings.to_number(
-                tf.strings.split(raw_val,
-                                 feature_spec["delimiter"],
-                                 result_type='RaggedTensor'), tf.int64)
-            values = tf.fill(tf.shape(indices), 1)
-            indices = tf.expand_dims(indices, 1)
-        dense_shape = np.array(feature_spec["shape"], dtype=np.int64)
-        return (indices, values, dense_shape)
-    else:  # Dense string vector
+    if not feature_spec["is_sparse"]:
         return tf.strings.to_number(
             tf.strings.split(raw_val,
                              feature_spec["delimiter"],
                              result_type='RaggedTensor'),
             feature_spec["dtype"])
+    if feature_spec["delimiter_kv"] != "":
+        kvlist = tf.strings.split(raw_val,
+                                  feature_spec["delimiter"],
+                                  result_type='RaggedTensor')
+        kvsplited = tf.strings.split(
+            kvlist,
+            feature_spec["delimiter_kv"],
+            result_type='RaggedTensor').to_tensor()
+        # slice key tensor and value tensor
+        indices = tf.reshape(tf.slice(kvsplited, [0, 0], [-1, 1]), [-1])
+        indices = tf.expand_dims(
+            tf.strings.to_number(indices, feature_spec["dtype"]), 1)
+        # deal with empty strings or strings like "unkown", which
+        # tf.shape(kvsplited)[1] != 2
+        values = tf.cond(
+            tf.equal(tf.shape(kvsplited)[1],
+                     2), lambda: tf.strings.to_number(
+                         tf.reshape(tf.slice(kvsplited, [0, 1], [-1, 1]),
+                                    [-1]), feature_spec["dtype_weight"]),
+            lambda: tf.ones_like(indices, dtype=tf.float32))
+    else:
+        indices = tf.strings.to_number(
+            tf.strings.split(raw_val,
+                             feature_spec["delimiter"],
+                             result_type='RaggedTensor'), tf.int64)
+        values = tf.fill(tf.shape(indices), 1)
+        indices = tf.expand_dims(indices, 1)
+    dense_shape = np.array(feature_spec["shape"], dtype=np.int64)
+    return (indices, values, dense_shape)
 
 
 def parse_pai_dataset(feature_column_names, label_meta, feature_metas, *row):
@@ -256,31 +251,35 @@ def pai_dataset(table,
     for n in feature_column_names:
         if feature_metas[n]["delimiter"]:
             dtypes.append("string")
+        elif feature_metas[n]["dtype"] == DataType.INT64:
+            dtypes.append("int64")
+        elif feature_metas[n]["dtype"] == DataType.FLOAT32:
+            dtypes.append("float32")
+        elif feature_metas[n]["dtype"] == DataType.STRING:
+            dtypes.append("string")
         else:
-            # FIXME(typhoonzero): add types to work with refactored code.
-            if feature_metas[n]["dtype"] == DataType.INT64:
-                dtypes.append("int64")
-            elif feature_metas[n]["dtype"] == DataType.FLOAT32:
-                dtypes.append("float32")
-            elif feature_metas[n]["dtype"] == DataType.STRING:
-                dtypes.append("string")
-            else:
-                dtypes.append(feature_metas[n]["dtype"])
+            dtypes.append(feature_metas[n]["dtype"])
 
     if label_meta and label_meta["feature_name"]:
         selected_cols.append(label_meta["feature_name"])
-        if label_meta["delimiter"] != "":
+        if (
+            label_meta["delimiter"] == ""
+            and label_meta["dtype"] == DataType.INT64
+        ):
+            dtypes.append("int64")
+        elif (
+            label_meta["delimiter"] == ""
+            and label_meta["dtype"] == DataType.FLOAT32
+        ):
+            dtypes.append("float32")
+        elif (
+            label_meta["delimiter"] == ""
+            and label_meta["dtype"] == DataType.STRING
+            or label_meta["delimiter"] != ""
+        ):
             dtypes.append("string")
         else:
-            # FIXME(typhoonzero): add types to work with refactored code.
-            if label_meta["dtype"] == DataType.INT64:
-                dtypes.append("int64")
-            elif label_meta["dtype"] == DataType.FLOAT32:
-                dtypes.append("float32")
-            elif label_meta["dtype"] == DataType.STRING:
-                dtypes.append("string")
-            else:
-                dtypes.append(label_meta["dtype"])
+            dtypes.append(label_meta["dtype"])
 
     import paiio
     # satisfy different paiio versions.
@@ -288,16 +287,19 @@ def pai_dataset(table,
         f = paiio.TableRecordDataset
     except:  # noqa: E722
         f = paiio.data.TableRecordDataset
-    ds = f(table,
-           ["" if t == "string" else eval("np.%s()" % t) for t in dtypes],
-           selected_cols=",".join(selected_cols),
-           slice_id=slice_id,
-           slice_count=slice_count,
-           capacity=2**25,
-           num_threads=64).map(
-               functools.partial(parse_pai_dataset, feature_column_names,
-                                 label_meta, feature_metas))
-    return ds
+    return f(
+        table,
+        ["" if t == "string" else eval(f"np.{t}()") for t in dtypes],
+        selected_cols=",".join(selected_cols),
+        slice_id=slice_id,
+        slice_count=slice_count,
+        capacity=2**25,
+        num_threads=64,
+    ).map(
+        functools.partial(
+            parse_pai_dataset, feature_column_names, label_meta, feature_metas
+        )
+    )
 
 
 def get_dataset_fn(select,

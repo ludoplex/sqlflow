@@ -66,7 +66,7 @@ def get_explain_random_forest_pai_cmd(datasource, model_name, data_table,
     conn = db.connect_with_data_source(datasource)
     schema = db.get_table_schema(conn, data_table)
     columns = [f[0] for f in schema]
-    conn.execute("DROP TABLE IF EXISTS %s;" % result_table)
+    conn.execute(f"DROP TABLE IF EXISTS {result_table};")
     return (
         """pai -name feature_importance -project algo_public """
         """-DmodelName="%s" -DinputTableName="%s"  -DoutputTableName="%s" """

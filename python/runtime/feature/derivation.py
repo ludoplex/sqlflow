@@ -133,10 +133,7 @@ def escape_delimiter(delimiter):
     if delimiter in ["|", ".", "+", "?", "*", "$"]:
         return "\\" + delimiter
 
-    if delimiter == " ":
-        return "\\s"
-
-    return delimiter
+    return "\\s" if delimiter == " " else delimiter
 
 
 def infer_string_data_format(str_data, delimiter="", delimiter_kv=""):
@@ -182,8 +179,7 @@ def fill_csv_field_desc(cell, field_desc):
     raw_values = cell.split(",")
     values = []
     for v in raw_values:
-        v = v.strip()
-        if v:
+        if v := v.strip():
             values.append(v)
 
     if field_desc.is_sparse:
@@ -216,16 +212,15 @@ def fill_csv_field_desc(cell, field_desc):
 
     field_desc.delimiter = ","
     for v in values:
-        if field_desc.dtype == DataType.INT64:
-            try:
-                int_value = INT64_TYPE(v)
-            except ValueError:
-                field_desc.dtype = DataType.FLOAT32
-                field_desc.max_id = 0  # clear the max id
-                continue
-        else:
+        if field_desc.dtype != DataType.INT64:
             continue
 
+        try:
+            int_value = INT64_TYPE(v)
+        except ValueError:
+            field_desc.dtype = DataType.FLOAT32
+            field_desc.max_id = 0  # clear the max id
+            continue
         # INT type, record the maximum id
         field_desc.max_id = max(field_desc.max_id, int_value)
 
@@ -287,14 +282,14 @@ def fill_plain_field_desc(cell, field_desc):
 
     if float_value is None:
         field_desc.dtype = DataType.STRING
-        field_desc.shape = [1]
         if field_desc.vocabulary is None:
             field_desc.vocabulary = set()
         # Build vocabulary from the sample data
         field_desc.vocabulary.add(cell)
     else:
         field_desc.dtype = DataType.FLOAT32
-        field_desc.shape = [1]
+
+    field_desc.shape = [1]
 
 
 def fill_field_descs(generator, fd_map):
@@ -325,19 +320,16 @@ def fill_field_descs(generator, fd_map):
         elif dtype in ["CHAR", "VARCHAR", "TEXT", "STRING"]:
             str_column_indices.append(idx)
         else:
-            raise ValueError("unsupported field type %s" % dtype)
+            raise ValueError(f"unsupported field type {dtype}")
 
     # No string column, just return
     if not str_column_indices:
         return
 
-    original_size = {}
-    for name, fd in fd_map.items():
-        if fd.shape is None:
-            original_size[name] = 1
-        else:
-            original_size[name] = np.prod(fd.shape)
-
+    original_size = {
+        name: 1 if fd.shape is None else np.prod(fd.shape)
+        for name, fd in fd_map.items()
+    }
     format = [None] * len(str_column_indices)
     field_descs = [fd_map[names[i]] for i in str_column_indices]
     for row_idx, row_data in enumerate(generator()):
@@ -361,8 +353,7 @@ def fill_field_descs(generator, fd_map):
 
                     fill_kv_field_desc(cell, field_descs[i])
             else:
-                raise ValueError("unsupported data format {}".format(
-                    format[i]))
+                raise ValueError(f"unsupported data format {format[i]}")
 
 
 def update_feature_column(fc, fd_map):
@@ -382,7 +373,7 @@ def update_feature_column(fc, fd_map):
     if isinstance(fc, EmbeddingColumn) and fc.category_column is None:
         field_desc = fd_map[fc.name]
         if field_desc is None:
-            raise ValueError("column not found or inferred: %s" % fc.name)
+            raise ValueError(f"column not found or inferred: {fc.name}")
 
         # FIXME(typhoonzero): when to use sequence_category_id_column?
         # if column fieldDesc is SPARSE, the sparse shape should
@@ -400,7 +391,7 @@ def update_feature_column(fc, fd_map):
     if isinstance(fc, IndicatorColumn) and fc.category_column is None:
         field_desc = fd_map[fc.name]
         if field_desc is None:
-            raise ValueError("column not found or inferred: %s" % fc.name)
+            raise ValueError(f"column not found or inferred: {fc.name}")
 
         assert not field_desc.is_sparse, \
             "cannot use sparse column with indicator column"
@@ -423,16 +414,15 @@ def new_feature_column(field_desc):
     """
     if field_desc.dtype != DataType.STRING:
         return NumericColumn(field_desc)
-    else:
-        category_column = CategoryIDColumn(field_desc,
-                                           len(field_desc.vocabulary))
-        # NOTE(typhoonzero): a default embedding size of 128 is enough
-        # for most cases.
-        embedding = EmbeddingColumn(category_column=category_column,
-                                    dimension=128,
-                                    combiner="sum")
-        embedding.name = field_desc.name
-        return embedding
+    category_column = CategoryIDColumn(field_desc,
+                                       len(field_desc.vocabulary))
+    # NOTE(typhoonzero): a default embedding size of 128 is enough
+    # for most cases.
+    embedding = EmbeddingColumn(category_column=category_column,
+                                dimension=128,
+                                combiner="sum")
+    embedding.name = field_desc.name
+    return embedding
 
 
 def derive_feature_columns(targets, fc_map, fd_map, selected_field_names,
@@ -484,8 +474,8 @@ def derive_feature_columns(targets, fc_map, fd_map, selected_field_names,
 
             if not found:
                 raise ValueError(
-                    "'%s' in COLUMN clause does not match any selected fields"
-                    % field_name)
+                    f"'{field_name}' in COLUMN clause does not match any selected fields"
+                )
 
             del fd_map[field_name]
 
@@ -507,8 +497,7 @@ def derive_feature_columns(targets, fc_map, fd_map, selected_field_names,
 
                 field_desc = fd_map.get(selected_field_name, None)
                 if field_desc is None:
-                    raise ValueError("column not found or inferred: %s" %
-                                     selected_field_name)
+                    raise ValueError(f"column not found or inferred: {selected_field_name}")
                 new_fc = new_feature_column(field_desc)
                 new_fc_target_map[selected_field_name] = [new_fc]
 
@@ -607,8 +596,9 @@ def derive_label(label, fd_map):
         return  # NOTE: clustering model may not specify Label
 
     label_field_desc = fd_map[label_name]
-    assert label_field_desc is not None, \
-        "deriveLabel: LABEL COLUMN '%s' not found" % label_name
+    assert (
+        label_field_desc is not None
+    ), f"deriveLabel: LABEL COLUMN '{label_name}' not found"
 
     # use shape [] if label shape is [1] for TensorFlow scalar label
     # shape should be [].
@@ -674,6 +664,5 @@ def get_ordered_field_descs(features):
     fd_list = []
     for target in features:
         for fc in features[target]:
-            for fd in fc.get_field_desc():
-                fd_list.append(fd)
+            fd_list.extend(iter(fc.get_field_desc()))
     return fd_list

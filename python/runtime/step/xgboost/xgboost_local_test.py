@@ -30,7 +30,7 @@ from runtime.step.xgboost.predict import predict
 
 class TestXGBoostTrain(unittest.TestCase):
     def get_table_row_count(self, conn, table):
-        rs = conn.query("SELECT COUNT(*) FROM %s" % table)
+        rs = conn.query(f"SELECT COUNT(*) FROM {table}")
         ret = list(rs)
         rs.close()
         self.assertEqual(len(ret), 1)
@@ -123,7 +123,7 @@ class TestXGBoostTrain(unittest.TestCase):
                      result_column_names=result_column_names)
 
         eval_schema = self.get_table_schema(conn, "iris.evaluate_result_table")
-        self.assertEqual(eval_schema.keys(), set(['loss', 'accuracy_score']))
+        self.assertEqual(eval_schema.keys(), {'loss', 'accuracy_score'})
 
         with temp_file.TemporaryDirectory(as_cwd=True):
             feature_column_names = [
@@ -149,8 +149,7 @@ class TestXGBoostTrain(unittest.TestCase):
 
         explain_schema = self.get_table_schema(conn,
                                                "iris.explain_result_table_2")
-        self.assertEqual(explain_schema.keys(),
-                         set(['feature', 'fscore', 'gain']))
+        self.assertEqual(explain_schema.keys(), {'feature', 'fscore', 'gain'})
         conn.close()
 
 

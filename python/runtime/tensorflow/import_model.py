@@ -49,7 +49,7 @@ def import_model_package(model, namespace):
             try:
                 namespace[package] = __import__(package)
             except Exception as e:
-                print("failed to import %s: %s" % (package, e))
+                print(f"failed to import {package}: {e}")
 
 
 def import_model(model):

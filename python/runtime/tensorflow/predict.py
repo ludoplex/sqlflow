@@ -45,17 +45,14 @@ def encode_pred_result(result):
     if isinstance(result, (list, tuple)):
         result = np.array(result)
 
-    if isinstance(result, np.ndarray):
-        result = result.flatten()
-        if len(result) > 1:
-            # NOTE(typhoonzero): if the output dimension > 1, format
-            # output tensor using a comma separated string. Only
-            # available for keras models.
-            return ",".join([str(i) for i in result])
-        else:
-            return str(result[0])
-    else:
+    if not isinstance(result, np.ndarray):
         return str(result)
+    result = result.flatten()
+    return (
+        ",".join([str(i) for i in result])
+        if len(result) > 1
+        else str(result[0])
+    )
 
 
 def keras_predict(estimator, model_params, save, result_table,
@@ -152,7 +149,7 @@ def keras_predict(estimator, model_params, save, result_table,
                    "%d items instead of %d" % (len(extra_result_cols) + 1,
                                                len(result))
                 extra_pred_outputs = result[1:len(extra_result_cols) + 1]
-                result = result[0:1]
+                result = result[:1]
             else:
                 extra_pred_outputs = None
 
@@ -165,11 +162,7 @@ def keras_predict(estimator, model_params, save, result_table,
                 sum = 0
                 for i in result[0]:
                     sum += i
-                if np.isclose(sum, 1.0):  # classification result
-                    result = result[0].argmax(axis=-1)
-                else:
-                    result = result[0]  # multiple regression result
-
+                result = result[0].argmax(axis=-1) if np.isclose(sum, 1.0) else result[0]
             row.append(encode_pred_result(result))
             if extra_pred_outputs is not None:
                 row.extend([encode_pred_result(p) for p in extra_pred_outputs])
@@ -220,50 +213,46 @@ def estimator_predict(result_table, feature_column_names, feature_metas,
                 keys = x[0][i][0].flatten()
                 weights = x[0][i][1].flatten()
                 weight_dtype_str = feature_metas[feature_name]["dtype_weight"]
-                if (dtype_str == "float32" or dtype_str == "float64"
-                        or dtype_str == DataType.FLOAT32):
+                if dtype_str in ["float32", "float64", DataType.FLOAT32]:
                     raise ValueError(
                         "not supported key-value feature with key type float")
-                elif (dtype_str == "int32" or dtype_str == "int64"
-                      or dtype_str == DataType.INT64):
+                elif dtype_str in ["int32", "int64", DataType.INT64]:
                     example.features.feature[
                         feature_name].int64_list.value.extend(list(keys))
-                elif (dtype_str == "string" or dtype_str == DataType.STRING):
+                elif dtype_str in ["string", DataType.STRING]:
                     example.features.feature[
                         feature_name].bytes_list.value.extend(list(keys))
-                if (weight_dtype_str == "float32"
-                        or weight_dtype_str == "float64"
-                        or weight_dtype_str == DataType.FLOAT32):
+                if weight_dtype_str in [
+                    "float32",
+                    "float64",
+                    DataType.FLOAT32,
+                ]:
                     example.features.feature["_".join(
                         [feature_name,
                          "weight"])].float_list.value.extend(list(weights))
                 else:
                     raise ValueError(
-                        "not supported key value column weight data type: %s" %
-                        weight_dtype_str)
+                        f"not supported key value column weight data type: {weight_dtype_str}"
+                    )
             else:
                 # NOTE(typhoonzero): sparse feature will get
                 # (indices,values,shape) here, use indices only
                 values = x[0][i][0].flatten()
-                if (dtype_str == "float32" or dtype_str == "float64"
-                        or dtype_str == DataType.FLOAT32):
+                if dtype_str in ["float32", "float64", DataType.FLOAT32]:
                     example.features.feature[
                         feature_name].float_list.value.extend(list(values))
-                elif (dtype_str == "int32" or dtype_str == "int64"
-                      or dtype_str == DataType.INT64):
+                elif dtype_str in ["int32", "int64", DataType.INT64]:
                     example.features.feature[
                         feature_name].int64_list.value.extend(list(values))
         else:
-            if (dtype_str == "float32" or dtype_str == "float64"
-                    or dtype_str == DataType.FLOAT32):
+            if dtype_str in ["float32", "float64", DataType.FLOAT32]:
                 # need to pass a tuple(float, )
                 example.features.feature[feature_name].float_list.value.extend(
                     (float(x[0][i][0]), ))
-            elif (dtype_str == "int32" or dtype_str == "int64"
-                  or dtype_str == DataType.INT64):
+            elif dtype_str in ["int32", "int64", DataType.INT64]:
                 example.features.feature[feature_name].int64_list.value.extend(
                     (int(x[0][i][0]), ))
-            elif dtype_str == "string" or dtype_str == DataType.STRING:
+            elif dtype_str in ["string", DataType.STRING]:
                 example.features.feature[feature_name].bytes_list.value.extend(
                     x[0][i])
 
@@ -347,4 +336,4 @@ def pred(datasource,
                           train_label_name, result_col_name, conn,
                           predict_generator, selected_cols)
 
-    print("Done predicting. Predict table : %s" % result_table)
+    print(f"Done predicting. Predict table : {result_table}")

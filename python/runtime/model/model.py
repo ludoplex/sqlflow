@@ -129,10 +129,7 @@ class Model(object):
             if name.startswith("./"):
                 name = name[2:]
 
-            if name in ALL_TAR_FILES:
-                return None
-
-            return tarinfo
+            return None if name in ALL_TAR_FILES else tarinfo
 
         zip_dir(local_dir, tarball, arcname="./", filter=filter)
 
@@ -183,7 +180,7 @@ class Model(object):
 
         if "." not in table:
             project_name = conn.param("database")
-            table = project_name + "." + table
+            table = f"{project_name}.{table}"
 
         with temp_file.TemporaryDirectory() as tmp_dir:
             tarball = os.path.join(tmp_dir, TARBALL_NAME)
@@ -249,7 +246,8 @@ class Model(object):
             return Model._load_metadata_from_db_impl(datasource, table)
         except:  # noqa: E722
             return Model._load_metadata_from_db_impl(
-                datasource, table + "_sqlflow_pai_model")
+                datasource, f"{table}_sqlflow_pai_model"
+            )
 
     @staticmethod
     def _load_metadata_from_db_impl(datasource, table):
@@ -330,12 +328,12 @@ def _decompose_model_name(name):
     if idx < 0:
         return "", name, ""
 
-    model_zoo_addr = name[0:idx]
+    model_zoo_addr = name[:idx]
     name = name[idx + 1:]
     tag = ""
     idx = name.rfind(":")
     if idx >= 0:
         tag = name[idx + 1:]
-        name = name[0:idx]
+        name = name[:idx]
 
     return model_zoo_addr, name, tag

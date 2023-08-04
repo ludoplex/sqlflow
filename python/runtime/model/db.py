@@ -97,7 +97,7 @@ class SQLFSWriter(object):
 
 
 def _build_ordered_reader(reader):
-    block_dict = dict()
+    block_dict = {}
     cur_id = 0
     for id, block in reader:
         block_dict[id] = block
@@ -123,20 +123,17 @@ class BlockReader(object):
         self.fragments = []
 
     def _query_next(self):
-        sql = "SELECT id, block FROM {} WHERE id>={} AND id<{};".format(
-            self.table, self.row_idx, self.row_idx + self.row_buf_size)
+        sql = f"SELECT id, block FROM {self.table} WHERE id>={self.row_idx} AND id<{self.row_idx + self.row_buf_size};"
         rs = self.conn.query(sql)
         fragments = list(rs)
         rs.close()
         fragments.sort(key=lambda f: f[0])
-        assert len(fragments) <= self.row_buf_size, \
-            "invalid sqlfs db table %s" % self.table
+        assert (
+            len(fragments) <= self.row_buf_size
+        ), f"invalid sqlfs db table {self.table}"
 
-        i = 0
-        for idx, _ in fragments:
-            assert idx == self.row_idx + i, \
-                "invalid sqlfs db table %s" % self.table
-            i += 1
+        for i, (idx, _) in enumerate(fragments):
+            assert idx == self.row_idx + i, f"invalid sqlfs db table {self.table}"
         return fragments
 
     def next_block(self):
@@ -172,7 +169,7 @@ class SQLFSReader(object):
             return b''
 
         if n < 0:
-            raise ValueError("invalid number {}".format(n))
+            raise ValueError(f"invalid number {n}")
 
         while len(self.buffer) < n:
             new_buffer = self.reader.next_block()
@@ -183,7 +180,7 @@ class SQLFSReader(object):
             self.buffer += new_buffer
 
         read_length = min(n, len(self.buffer))
-        result = self.buffer[0:read_length]
+        result = self.buffer[:read_length]
         self.buffer = self.buffer[read_length:]
         return result
 
@@ -207,8 +204,7 @@ def _encode_metadata(metadata):
     len_magic = "{0:#0{1}x}".format(len(metadata_json), 10)
     if six.PY3:
         len_magic = bytes(len_magic, encoding='utf-8')
-    result = len_magic + metadata_json
-    return result
+    return len_magic + metadata_json
 
 
 def _read_metadata(reader):
@@ -256,8 +252,7 @@ def read_metadata_from_db(datasource, table):
     """
     with connect_with_data_source(datasource) as conn:
         with SQLFSReader(conn, table) as r:
-            metadata = _read_metadata(r)
-            return metadata
+            return _read_metadata(r)
 
 
 def read_with_generator_and_metadata(datasource,

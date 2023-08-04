@@ -50,7 +50,7 @@ def evaluate(datasource,
     is_estimator = is_tf_estimator(estimator_cls)
     set_log_level(verbose, is_estimator)
 
-    is_pai = True if pai_table else False
+    is_pai = bool(pai_table)
     eval_dataset = get_dataset_fn(select,
                                   datasource,
                                   feature_column_names,
@@ -91,19 +91,15 @@ def evaluate(datasource,
 def estimator_evaluate(estimator, eval_dataset, validation_metrics):
     result = estimator.evaluate(eval_dataset)
     avg_loss = result["average_loss"]
-    result_metrics = dict()
-    result_metrics["loss"] = float(avg_loss)
+    result_metrics = {"loss": float(avg_loss)}
     for m in validation_metrics:
-        val = float(result.get(m.lower()))
-        if val:
+        if val := float(result.get(m.lower())):
             result_metrics[m] = val
         else:
             # NOTE: estimator automatically append metrics for the current
             # evaluation job, if user specified metrics not appear in
             # estimator's result dict, fill None.
-            print(
-                "specified metric %s not calculated by estimator, fill empty "
-                "value." % m)
+            print(f"specified metric {m} not calculated by estimator, fill empty value.")
             result_metrics[m] = None
 
     return result_metrics
@@ -121,7 +117,7 @@ def keras_evaluate(keras_model, eval_dataset_fn, save, keras_model_pkg,
     if validation_metrics != ["Accuracy"]:
         keras_metrics = metrics.get_keras_metrics(validation_metrics)
     else:
-        if len(model_metrics) > 0:
+        if model_metrics:
             keras_metrics = model_metrics
         else:
             # default
@@ -152,7 +148,7 @@ def keras_evaluate(keras_model, eval_dataset_fn, save, keras_model_pkg,
         result = keras_model.evaluate(eval_dataset)
 
     assert (len(result) == len(validation_metrics) + 1)
-    result_metrics = dict()
+    result_metrics = {}
     for idx, m in enumerate(["loss"] + validation_metrics):
         result_metrics[m] = float(result[idx])
     return result_metrics
@@ -163,7 +159,5 @@ def write_result_metrics(result_metrics, metric_name_list, result_table, conn):
     # loss | metric_names ...
     column_names = metric_name_list
     with buffered_db_writer(conn, result_table, column_names, 100) as w:
-        row = []
-        for key in metric_name_list:
-            row.append(result_metrics[key])
+        row = [result_metrics[key] for key in metric_name_list]
         w.write(row)
