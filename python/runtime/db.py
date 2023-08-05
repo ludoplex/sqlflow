@@ -34,22 +34,22 @@ XGBOOST_NULL_MAGIC = 9999.0
 def read_feature(raw_val, feature_spec, feature_name, is_xgboost):
     # FIXME(typhoonzero): Should use correct dtype here.
     null_feature_error = ValueError(
-        "column %s value is NULL, expected dense vector with delimiter %s" %
-        (feature_name, feature_spec["delimiter"]))
+        f'column {feature_name} value is NULL, expected dense vector with delimiter {feature_spec["delimiter"]}'
+    )
     if feature_spec["is_sparse"]:
         if feature_spec["format"] == "kv":
             if is_xgboost and raw_val is None:
                 indices = np.array([], dtype=np.int64)
                 values = np.array([], dtype=np.float32)
             else:
-                if feature_spec.get("delimiter_kv", "") != "":
-                    delim1 = feature_spec["delimiter"]
-                    delim2 = feature_spec["delimiter_kv"]
-                    indices_dtype = feature_spec["dtype"]
-                else:  # default libsvm kv format delimiters: "k:v k:v..."
+                if feature_spec.get("delimiter_kv", "") == "":  # default libsvm kv format delimiters: "k:v k:v..."
                     delim1 = " "
                     delim2 = ":"
                     indices_dtype = "int64"
+                else:
+                    delim1 = feature_spec["delimiter"]
+                    delim2 = feature_spec["delimiter_kv"]
+                    indices_dtype = feature_spec["dtype"]
                 items = raw_val.split(delim1)
                 items = [item.split(delim2, 2) for item in items]
                 # NOTE(typhoonzero): dtype is already checked when compiling:
@@ -65,16 +65,15 @@ def read_feature(raw_val, feature_spec, feature_name, is_xgboost):
                     float(item[1]) if len(item) == 2 else 1.0 for item in items
                 ],
                                   dtype=dtype_weight)
-        else:  # csv format
-            if is_xgboost and raw_val is None:
-                indices = np.array([], dtype=int)
-                values = np.array([], dtype=np.int64)
-            else:
-                indices = np.fromstring(raw_val,
-                                        dtype=int,
-                                        sep=feature_spec["delimiter"])
-                indices = indices.reshape(indices.size, 1)
-                values = np.ones([indices.size], dtype=np.int64)
+        elif is_xgboost and raw_val is None:
+            indices = np.array([], dtype=int)
+            values = np.array([], dtype=np.int64)
+        else:
+            indices = np.fromstring(raw_val,
+                                    dtype=int,
+                                    sep=feature_spec["delimiter"])
+            indices = indices.reshape(indices.size, 1)
+            values = np.ones([indices.size], dtype=np.int64)
 
         dense_shape = np.array(feature_spec["shape"], dtype=np.int64)
         return indices, values, dense_shape
@@ -83,34 +82,34 @@ def read_feature(raw_val, feature_spec, feature_name, is_xgboost):
             raise ValueError(
                 "not supported DENSE column with key:value list format.")
         # Dense string vector
-        if feature_spec["dtype"] == "float32":
-            if raw_val is None:
-                raise null_feature_error
-            else:
-                vec = np.fromstring(raw_val,
-                                    dtype=np.float32,
-                                    sep=feature_spec["delimiter"])
+        if (
+            feature_spec["dtype"] == "float32"
+            and raw_val is None
+            or feature_spec["dtype"] != "float32"
+            and feature_spec["dtype"] == "int64"
+            and raw_val is None
+        ):
+            raise null_feature_error
+        elif feature_spec["dtype"] == "float32":
+            vec = np.fromstring(raw_val,
+                                dtype=np.float32,
+                                sep=feature_spec["delimiter"])
         elif feature_spec["dtype"] == "int64":
-            if raw_val is None:
-                raise null_feature_error
-            else:
-                vec = np.fromstring(raw_val,
-                                    dtype=np.int64,
-                                    sep=feature_spec["delimiter"])
+            vec = np.fromstring(raw_val,
+                                dtype=np.int64,
+                                sep=feature_spec["delimiter"])
         else:
-            raise ValueError('unrecognize dtype {}'.format(
-                feature_spec["dtype"]))
+            raise ValueError(f'unrecognize dtype {feature_spec["dtype"]}')
 
         vec = vec.reshape(list(feature_spec["shape"]))
         return vec,
     elif feature_spec["dtype"] == "float32":
-        if raw_val is None:
-            if is_xgboost:
-                return float(XGBOOST_NULL_MAGIC),
-            else:
-                raise null_feature_error
-        else:
+        if raw_val is not None:
             return float(raw_val),
+        if is_xgboost:
+            return float(XGBOOST_NULL_MAGIC),
+        else:
+            raise null_feature_error
     elif feature_spec["dtype"] == "int64":
         if raw_val is None:
             if is_xgboost:
@@ -121,10 +120,7 @@ def read_feature(raw_val, feature_spec, feature_name, is_xgboost):
             int_raw_val = INT64_TYPE(raw_val)
             return int_raw_val,
     elif feature_spec["dtype"] == "string":
-        if raw_val is None:
-            return "",
-        else:
-            return str(raw_val),
+        return ("", ) if raw_val is None else (str(raw_val), )
     else:
         # This case is used for unittests.
         # For example, explain_test.py uses int32 data.
@@ -157,7 +153,7 @@ def limit_select(select, n):
         if idx < 0:
             idx = len(select)
 
-        return select[0:idx] + " LIMIT {}".format(n) + select[idx:]
+        return select[:idx] + " LIMIT {}".format(n) + select[idx:]
     else:
         return LIMIT_PATTERN.sub(repl=replace_limit_num, string=select)
 
@@ -226,10 +222,7 @@ def to_db_field_type(driver, dtype):
         A field type that the CREATE TABLE statement accepts.
     """
     if dtype in ["VARCHAR", "CHAR"]:
-        if driver == "mysql":
-            return dtype + "(255)"
-        else:
-            return "STRING"
+        return f"{dtype}(255)" if driver == "mysql" else "STRING"
     else:
         return dtype
 
@@ -282,18 +275,18 @@ def buffered_db_writer(conn,
                        buff_size=100,
                        slice_id=0):
     driver = conn.driver
-    if driver == "maxcompute":
+    if driver == "hive":
+        w = db_writer.HiveDBWriter(conn, table_name, table_schema, buff_size)
+    elif driver == "maxcompute":
         w = db_writer.MaxComputeDBWriter(conn, table_name, table_schema,
                                          buff_size)
     elif driver == "mysql":
         w = db_writer.MySQLDBWriter(conn, table_name, table_schema, buff_size)
-    elif driver == "hive":
-        w = db_writer.HiveDBWriter(conn, table_name, table_schema, buff_size)
     elif driver == "paiio":
         w = db_writer.PAIMaxComputeDBWriter(table_name, table_schema,
                                             buff_size, slice_id)
     else:
-        raise ValueError("unrecognized database driver: %s" % driver)
+        raise ValueError(f"unrecognized database driver: {driver}")
 
     try:
         yield w

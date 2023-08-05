@@ -33,9 +33,7 @@ class TestConfig(unittest.TestCase):
     """We use python2 in alisa, so let's skip the tests in the other drivers.
     """
     def test_encode_json_base64(self):
-        params = dict()
-        params["key1"] = "val1"
-        params["key2"] = "val2"
+        params = {"key1": "val1", "key2": "val2"}
         b64 = Config._encode_json_base64(params)
         self.assertEqual("eyJrZXkyIjogInZhbDIiLCAia2V5MSI6ICJ2YWwxIn0", b64)
 

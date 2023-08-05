@@ -128,7 +128,7 @@ def train(datasource,
                            feature_column_names, feature_column_names_map,
                            feature_metas, label_meta, model_params_code_map,
                            feature_columns_code, num_workers)
-        print("Model saved to oss: %s" % oss_model_dir)
+        print(f"Model saved to oss: {oss_model_dir}")
 
     # remove cache files
     any(map(os.remove, glob.glob('cache_train.*')))

@@ -30,12 +30,15 @@ from runtime.tensorflow.get_tf_version import tf_is_version2
 
 class SQLFlowEstimatorBuilder(EstimatorBuilder):
     def _build(self, experiment, run_config):
-        feature_columns = []
-
-        for col_name in [
-                "sepal_length", "sepal_width", "petal_length", "petal_width"
-        ]:
-            feature_columns.append(tf.feature_column.numeric_column(col_name))
+        feature_columns = [
+            tf.feature_column.numeric_column(col_name)
+            for col_name in [
+                "sepal_length",
+                "sepal_width",
+                "petal_length",
+                "petal_width",
+            ]
+        ]
         return tf.estimator.DNNClassifier(  # pylint: disable=no-member
             n_classes=3,
             hidden_units=[10, 20],
@@ -55,13 +58,15 @@ if __name__ == "__main__":
         endpoint=os.getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_ENDPOINT"),
         project=odps_project)
 
-    features = []
-    for col_name in [
-            "sepal_length", "sepal_width", "petal_length", "petal_width"
-    ]:
-        # NOTE: add sparse columns like:
-        # SparseColumn(name="deep_id", shape=[15033], dtype="int")
-        features.append(DenseColumn(name=col_name, shape=[1], dtype="float32"))
+    features = [
+        DenseColumn(name=col_name, shape=[1], dtype="float32")
+        for col_name in [
+            "sepal_length",
+            "sepal_width",
+            "petal_length",
+            "petal_width",
+        ]
+    ]
     labels = DenseColumn(name="class", shape=[1], dtype="int", separator=",")
 
     try:
@@ -69,29 +74,31 @@ if __name__ == "__main__":
     except FileExistsError:
         pass
 
-    train(SQLFlowEstimatorBuilder(),
-          odps_conf=odps_conf,
-          project=odps_project,
-          train_table="%s.sqlflow_test_iris_train" % odps_project,
-          eval_table="%s.sqlflow_test_iris_test" % odps_project,
-          features=features,
-          labels=labels,
-          feature_map_table="",
-          feature_map_partition="",
-          epochs=1,
-          batch_size=2,
-          shuffle=False,
-          shuffle_bufsize=128,
-          cache_file="",
-          max_steps=1000,
-          eval_steps=100,
-          eval_batch_size=1,
-          eval_start_delay=120,
-          eval_throttle=600,
-          drop_remainder=True,
-          export_path="./scratch/model",
-          scratch_dir="./scratch",
-          user_id="",
-          engine_config={"name": "LocalEngine"},
-          exit_on_submit=False)
+    train(
+        SQLFlowEstimatorBuilder(),
+        odps_conf=odps_conf,
+        project=odps_project,
+        train_table=f"{odps_project}.sqlflow_test_iris_train",
+        eval_table=f"{odps_project}.sqlflow_test_iris_test",
+        features=features,
+        labels=labels,
+        feature_map_table="",
+        feature_map_partition="",
+        epochs=1,
+        batch_size=2,
+        shuffle=False,
+        shuffle_bufsize=128,
+        cache_file="",
+        max_steps=1000,
+        eval_steps=100,
+        eval_batch_size=1,
+        eval_start_delay=120,
+        eval_throttle=600,
+        drop_remainder=True,
+        export_path="./scratch/model",
+        scratch_dir="./scratch",
+        user_id="",
+        engine_config={"name": "LocalEngine"},
+        exit_on_submit=False,
+    )
     shutil.rmtree("scratch")

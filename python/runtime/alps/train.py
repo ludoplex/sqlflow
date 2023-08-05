@@ -98,11 +98,7 @@ def train(model_builder,
     else:
         runtime_conf = None
 
-    if max_steps is None:
-        keep_checkpoint_max = 100
-    else:
-        keep_checkpoint_max = int(max_steps / 100)
-
+    keep_checkpoint_max = 100 if max_steps is None else int(max_steps / 100)
     if engine_config["name"] == "LocalEngine":
         engine = LocalEngine()
     elif engine_config["name"] == "YarnEngine":
@@ -122,7 +118,7 @@ def train(model_builder,
             worker=ResourceConf(memory=engine_config["worker_mem"],
                                 num=engine_config["worker_num"]))
     else:
-        print("unknown engine type: %s" % engine_config["name"])
+        print(f'unknown engine type: {engine_config["name"]}')
         exit(1)
 
     experiment = Experiment(

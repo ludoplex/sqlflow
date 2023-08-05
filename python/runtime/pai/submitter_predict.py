@@ -117,7 +117,7 @@ def submit_pai_predict(datasource,
     # submitting argument of format "odps://project/tables/table_name"
     project = table_ops.get_project(datasource)
     if result_table.count(".") == 0:
-        result_table = "%s.%s" % (project, result_table)
+        result_table = f"{project}.{result_table}"
 
     model_metas = Model.load_metadata_from_db(datasource, model)
     model_type = model_metas.get_type()
@@ -163,8 +163,15 @@ def submit_pai_predict(datasource,
             prepare_archive(cwd, estimator, oss_model_path, params)
 
             cmd = get_pai_predict_cmd(
-                datasource, project, oss_model_path, model, data_table,
-                result_table, model_type, pred_params,
-                "file://" + os.path.join(cwd, JOB_ARCHIVE_FILE),
-                "file://" + os.path.join(cwd, PARAMS_FILE))
+                datasource,
+                project,
+                oss_model_path,
+                model,
+                data_table,
+                result_table,
+                model_type,
+                pred_params,
+                f"file://{os.path.join(cwd, JOB_ARCHIVE_FILE)}",
+                f"file://{os.path.join(cwd, PARAMS_FILE)}",
+            )
             submit_pai_task(cmd, datasource)

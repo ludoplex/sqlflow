@@ -70,8 +70,9 @@ def upload_resource(file_path, oss_obj_name, bucket):
         The oss object uri to access the uploaded resource
     """
 
-    resource_oss_url = "https://%s.%s/%s" % (bucket.bucket_name,
-                                             bucket.endpoint, oss_obj_name)
+    resource_oss_url = (
+        f"https://{bucket.bucket_name}.{bucket.endpoint}/{oss_obj_name}"
+    )
     bucket.put_object_from_file(oss_obj_name, file_path)
     return resource_oss_url
 
@@ -180,7 +181,7 @@ def submit_alisa_train(datasource, estimator_string, select, validation_select,
     # the params will be pickled into train_params.pkl
     params = dict(locals())
     del params["train_params"]
-    params.update(train_params)
+    params |= train_params
 
     if estimator_string.lower().startswith("xgboost"):
         params["entry_type"] = "train_xgb"
@@ -199,19 +200,30 @@ def submit_alisa_train(datasource, estimator_string, select, validation_select,
     params["oss_model_dir"] = path_to_save
 
     if path_to_load == "" or path_to_load != path_to_save:
-        clean_oss_model_path(path_to_save + "/")
+        clean_oss_model_path(f"{path_to_save}/")
 
     # zip all required resource to a tarball
     prepare_archive(cwd, estimator_string, path_to_save, params)
 
     # submit pai task to execute the training
-    cmd = get_pai_train_cmd(datasource, estimator_string, model_name,
-                            train_table, val_table, model_params, train_params,
-                            path_to_save, "file://@@%s" % JOB_ARCHIVE_FILE,
-                            "file://@@%s" % PARAMS_FILE)
+    cmd = get_pai_train_cmd(
+        datasource,
+        estimator_string,
+        model_name,
+        train_table,
+        val_table,
+        model_params,
+        train_params,
+        path_to_save,
+        f"file://@@{JOB_ARCHIVE_FILE}",
+        f"file://@@{PARAMS_FILE}",
+    )
     upload_resource_and_submit_alisa_task(
-        datasource, "file://" + path.join(cwd, JOB_ARCHIVE_FILE),
-        "file://" + path.join(cwd, PARAMS_FILE), cmd)
+        datasource,
+        f"file://{path.join(cwd, JOB_ARCHIVE_FILE)}",
+        f"file://{path.join(cwd, PARAMS_FILE)}",
+        cmd,
+    )
 
     # save trained model to sqlfs
     save_model_to_sqlfs(datasource, path_to_save, model_name)
@@ -242,7 +254,7 @@ def submit_alisa_predict(datasource, select, result_table, label_column,
     # "odps://project/tables/table_name"
     project = get_project(datasource)
     if result_table.count(".") == 0:
-        result_table = "%s.%s" % (project, result_table)
+        result_table = f"{project}.{result_table}"
 
     oss_model_path = get_oss_model_save_path(datasource, model_name)
     params["oss_model_path"] = oss_model_path
@@ -256,14 +268,26 @@ def submit_alisa_predict(datasource, select, result_table, label_column,
 
     prepare_archive(cwd, estimator, oss_model_path, params)
 
-    cmd = get_pai_predict_cmd(datasource, project, oss_model_path, model_name,
-                              data_table, result_table, model_type,
-                              model_params, "file://@@%s" % JOB_ARCHIVE_FILE,
-                              "file://@@%s" % PARAMS_FILE, cwd)
+    cmd = get_pai_predict_cmd(
+        datasource,
+        project,
+        oss_model_path,
+        model_name,
+        data_table,
+        result_table,
+        model_type,
+        model_params,
+        f"file://@@{JOB_ARCHIVE_FILE}",
+        f"file://@@{PARAMS_FILE}",
+        cwd,
+    )
 
     upload_resource_and_submit_alisa_task(
-        datasource, "file://" + path.join(cwd, JOB_ARCHIVE_FILE),
-        "file://" + path.join(cwd, PARAMS_FILE), cmd)
+        datasource,
+        f"file://{path.join(cwd, JOB_ARCHIVE_FILE)}",
+        f"file://{path.join(cwd, PARAMS_FILE)}",
+        cmd,
+    )
 
     drop_tables([data_table], datasource)
 
@@ -293,7 +317,7 @@ def submit_alisa_explain(datasource, select, result_table, model_name,
     # "odps://project/tables/table_name"
     project = get_project(datasource)
     if result_table.count(".") == 0:
-        result_table = "%s.%s" % (project, result_table)
+        result_table = f"{project}.{result_table}"
 
     oss_model_path = get_oss_model_save_path(datasource, model_name)
     model_type, estimator = get_saved_model_type_and_estimator(
@@ -309,13 +333,26 @@ def submit_alisa_explain(datasource, select, result_table, model_name,
     setup_explain_entry(params, model_type)
     prepare_archive(cwd, estimator, oss_model_path, params)
 
-    cmd = get_pai_explain_cmd(datasource, project, oss_model_path, model_name,
-                              data_table, result_table, model_type,
-                              model_params, "file://@@%s" % JOB_ARCHIVE_FILE,
-                              "file://@@%s" % PARAMS_FILE, label_column, cwd)
+    cmd = get_pai_explain_cmd(
+        datasource,
+        project,
+        oss_model_path,
+        model_name,
+        data_table,
+        result_table,
+        model_type,
+        model_params,
+        f"file://@@{JOB_ARCHIVE_FILE}",
+        f"file://@@{PARAMS_FILE}",
+        label_column,
+        cwd,
+    )
     upload_resource_and_submit_alisa_task(
-        datasource, "file://" + path.join(cwd, JOB_ARCHIVE_FILE),
-        "file://" + path.join(cwd, PARAMS_FILE), cmd)
+        datasource,
+        f"file://{path.join(cwd, JOB_ARCHIVE_FILE)}",
+        f"file://{path.join(cwd, PARAMS_FILE)}",
+        cmd,
+    )
     drop_tables([data_table], datasource)
 
 
@@ -336,7 +373,7 @@ def submit_alisa_evaluate(datasource, model_name, select, result_table,
 
     project = get_project(datasource)
     if result_table.count(".") == 0:
-        result_table = "%s.%s" % (project, result_table)
+        result_table = f"{project}.{result_table}"
     oss_model_path = get_oss_model_save_path(datasource, model_name)
     params["oss_model_path"] = oss_model_path
 
@@ -359,10 +396,22 @@ def submit_alisa_evaluate(datasource, model_name, select, result_table,
     else:
         params["entry_type"] = "evaluate_tf"
     prepare_archive(cwd, estimator, oss_model_path, params)
-    cmd = get_pai_tf_cmd(conf, "file://@@%s" % JOB_ARCHIVE_FILE,
-                         "file://@@%s" % PARAMS_FILE, ENTRY_FILE, model_name,
-                         oss_model_path, data_table, "", result_table, project)
+    cmd = get_pai_tf_cmd(
+        conf,
+        f"file://@@{JOB_ARCHIVE_FILE}",
+        f"file://@@{PARAMS_FILE}",
+        ENTRY_FILE,
+        model_name,
+        oss_model_path,
+        data_table,
+        "",
+        result_table,
+        project,
+    )
     upload_resource_and_submit_alisa_task(
-        datasource, "file://" + path.join(cwd, JOB_ARCHIVE_FILE),
-        "file://" + path.join(cwd, PARAMS_FILE), cmd)
+        datasource,
+        f"file://{path.join(cwd, JOB_ARCHIVE_FILE)}",
+        f"file://{path.join(cwd, PARAMS_FILE)}",
+        cmd,
+    )
     drop_tables([data_table], datasource)

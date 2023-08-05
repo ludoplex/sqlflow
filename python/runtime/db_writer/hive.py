@@ -35,15 +35,10 @@ class HiveDBWriter(BufferedDBWriter):
         column_list = self.conn.get_table_schema(self.table_name)
 
         schema_idx = []
-        idx_map = {}
-        # column list: [(col1, type, desc), (col2, type, desc)...]
-        for i, e in enumerate(column_list):
-            idx_map[e[0]] = i
-
+        idx_map = {e[0]: i for i, e in enumerate(column_list)}
         for s in table_schema:
             if s not in idx_map:
-                raise ValueError("column: %s should be in table columns:%s" %
-                                 (s, idx_map))
+                raise ValueError(f"column: {s} should be in table columns:{idx_map}")
             schema_idx.append(idx_map[s])
 
         return schema_idx
@@ -72,28 +67,28 @@ class HiveDBWriter(BufferedDBWriter):
         # upload CSV to HDFS
         hdfs_envs = os.environ.copy()
         if self.hdfs_user != "":
-            hdfs_envs.update({"HADOOP_USER_NAME": self.hdfs_user})
+            hdfs_envs["HADOOP_USER_NAME"] = self.hdfs_user
         if self.hdfs_pass != "":
-            hdfs_envs.update({"HADOOP_USER_PASSWORD": self.hdfs_pass})
+            hdfs_envs["HADOOP_USER_PASSWORD"] = self.hdfs_pass
         # if namenode_addr is not set, use local hdfs command's configuration.
         if self.hdfs_namenode_addr != "":
-            cmd_namenode_str = "-fs hdfs://%s" % (self.hdfs_namenode_addr)
+            cmd_namenode_str = f"-fs hdfs://{self.hdfs_namenode_addr}"
         else:
             cmd_namenode_str = ""
-        cmd_str = "hdfs dfs %s -mkdir -p %s/%s/" % (cmd_namenode_str,
-                                                    hdfs_path, self.table_name)
+        cmd_str = (
+            f"hdfs dfs {cmd_namenode_str} -mkdir -p {hdfs_path}/{self.table_name}/"
+        )
         subprocess.check_output(cmd_str.split(), env=hdfs_envs)
-        cmd_str = "hdfs dfs %s -copyFromLocal %s %s/%s/" % (
-            cmd_namenode_str, self.tmp_f.name, hdfs_path, self.table_name)
+        cmd_str = f"hdfs dfs {cmd_namenode_str} -copyFromLocal {self.tmp_f.name} {hdfs_path}/{self.table_name}/"
         subprocess.check_output(cmd_str.split(), env=hdfs_envs)
         # load CSV into Hive
-        load_sql = "LOAD DATA INPATH '%s/%s/' OVERWRITE INTO TABLE %s" % (
-            hdfs_path, self.table_name, self.table_name)
+        load_sql = f"LOAD DATA INPATH '{hdfs_path}/{self.table_name}/' OVERWRITE INTO TABLE {self.table_name}"
         self.conn.execute(load_sql)
 
         # remove the temporary dir on hdfs
-        cmd_str = "hdfs dfs %s -rm -r -f %s/%s/" % (cmd_namenode_str,
-                                                    hdfs_path, self.table_name)
+        cmd_str = (
+            f"hdfs dfs {cmd_namenode_str} -rm -r -f {hdfs_path}/{self.table_name}/"
+        )
         subprocess.check_output(cmd_str.split(), env=hdfs_envs)
 
     def close(self):

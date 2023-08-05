@@ -46,8 +46,9 @@ for i in days:
 df_gap_agg = pd.DataFrame([], index=df_gap.index)
 timegap = 30
 for i in range(1440 // 30):
-    df_gap_agg['m' + str(i + 1)] = df_gap.iloc[:, (i * timegap):(i + 1) *
-                                               timegap].sum(1)
+    df_gap_agg[f'm{str(i + 1)}'] = df_gap.iloc[
+        :, (i * timegap) : (i + 1) * timegap
+    ].sum(1)
 
 ### Data scaling
 df_gap_final = pd.DataFrame(

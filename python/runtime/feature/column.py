@@ -91,10 +91,10 @@ class FeatureColumn(object):
         elif isinstance(obj, FeatureColumn):
             return obj
         else:
-            raise TypeError("not supported type %s" % type(obj))
+            raise TypeError(f"not supported type {type(obj)}")
 
     @classmethod
-    def _from_dict(self, d):
+    def _from_dict(cls, d):
         """
         The underlying implementation of `FeatureColumn.from_dict`.
 
@@ -321,7 +321,7 @@ class CrossColumn(CategoryColumn):
             elif isinstance(k, NumericColumn):
                 descs.extend(k.get_field_desc())
             else:
-                raise ValueError("unsupported type %s" % type(k))
+                raise ValueError(f"unsupported type {type(k)}")
 
         return descs
 

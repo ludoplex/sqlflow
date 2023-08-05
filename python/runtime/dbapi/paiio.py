@@ -178,9 +178,12 @@ class PaiIOConnection(Connection):
         pts = table_name.split(".")
         if len(pts) != 2:
             raise ValueError("paiio table name should in db.table format.")
-        uri = "paiio://%s/tables/%s?slice_id=%d&slice_count=%d" % (
-            pts[0], pts[1], slice_id, slice_count)
-        return uri
+        return "paiio://%s/tables/%s?slice_id=%d&slice_count=%d" % (
+            pts[0],
+            pts[1],
+            slice_id,
+            slice_count,
+        )
 
     def close(self):
         pass

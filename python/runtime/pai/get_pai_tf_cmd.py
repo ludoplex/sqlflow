@@ -51,11 +51,11 @@ def get_pai_tf_cmd(cluster_config, tarball, params_file, entry_file,
     submit_tables = _max_compute_table_url(train_table)
     if train_table != val_table and val_table:
         val_table = _max_compute_table_url(val_table)
-        submit_tables = "%s,%s" % (submit_tables, val_table)
+        submit_tables = f"{submit_tables},{val_table}"
     output_tables = ""
     if res_table != "":
         table = _max_compute_table_url(res_table)
-        output_tables = "-Doutputs=%s" % table
+        output_tables = f"-Doutputs={table}"
 
     # NOTE(typhoonzero): use - DhyperParameters to define flags passing
     # OSS credentials.
@@ -82,9 +82,8 @@ def get_pai_tf_cmd(cluster_config, tarball, params_file, entry_file,
     model_url = pai_model.get_oss_model_url(oss_model_path)
     role_name = _get_project_role_name(project)
     # format the oss checkpoint path with ARN authorization.
-    oss_checkpoint_path = "%s/?role_arn=%s/%s&host=%s" % (
-        model_url, ckpt_conf["arn"], role_name, ckpt_conf["host"])
-    cmd = "%s -DcheckpointDir='%s'" % (cmd, oss_checkpoint_path)
+    oss_checkpoint_path = f'{model_url}/?role_arn={ckpt_conf["arn"]}/{role_name}&host={ckpt_conf["host"]}'
+    cmd = f"{cmd} -DcheckpointDir='{oss_checkpoint_path}'"
 
     if cluster_config["worker"]["count"] > 1:
         cmd = "%s -Dcluster=\"%s\"" % (cmd, cf_quote)
@@ -112,6 +111,5 @@ def _get_project_role_name(project):
 def _max_compute_table_url(table):
     parts = table.split(".")
     if len(parts) != 2:
-        raise SQLFlowDiagnostic("odps table: %s should be format db.table" %
-                                table)
-    return "odps://%s/tables/%s" % (parts[0], parts[1])
+        raise SQLFlowDiagnostic(f"odps table: {table} should be format db.table")
+    return f"odps://{parts[0]}/tables/{parts[1]}"

@@ -50,14 +50,13 @@ def create_tmp_table_from_select(select, datasource):
         return None
     project = get_project(datasource)
     tmp_tb_name = gen_rand_string()
-    create_sql = "CREATE TABLE %s LIFECYCLE %s AS %s" % (
-        tmp_tb_name, LIFECYCLE_ON_TMP_TABLE, select)
+    create_sql = f"CREATE TABLE {tmp_tb_name} LIFECYCLE {LIFECYCLE_ON_TMP_TABLE} AS {select}"
     # (NOTE: lhw) maxcompute conn doesn't support close
     # we should unify db interface
     with db.connect_with_data_source(datasource) as conn:
         if not conn.execute(create_sql):
-            raise SQLFlowDiagnostic("Can't create tmp table for %s" % select)
-        return "%s.%s" % (project, tmp_tb_name)
+            raise SQLFlowDiagnostic(f"Can't create tmp table for {select}")
+        return f"{project}.{tmp_tb_name}"
 
 
 def drop_tables(tables, datasource):
@@ -66,7 +65,7 @@ def drop_tables(tables, datasource):
         try:
             for table in tables:
                 if table != "":
-                    drop_sql = "DROP TABLE IF EXISTS %s" % table
+                    drop_sql = f"DROP TABLE IF EXISTS {table}"
                     conn.execute(drop_sql)
         except:  # noqa: E722
             # odps will clear table itself, so even fail here, we do
@@ -97,7 +96,7 @@ def create_tmp_tables_guard(selects, datasource):
         tables = [create_tmp_table_from_select(s, datasource) for s in selects]
         drop_table_list = tables
     else:
-        raise ValueError("not supported types {}".format(type(selects)))
+        raise ValueError(f"not supported types {type(selects)}")
 
     try:
         yield tables

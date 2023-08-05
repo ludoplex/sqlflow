@@ -80,7 +80,7 @@ class Task(object):  # noqa: R0205
             if status == AlisaTaksStatus.ALISA_TASK_COMPLETED:
                 return self.cli.get_results(
                     task_id, READ_RESULTS_BATCH) if resultful else []
-        raise Exception('task={}, invalid status={}'.format(task_id, status))
+        raise Exception(f'task={task_id}, invalid status={status}')
 
     def _tracking_quietly(self, task_id, status, resultful):
         while not self.cli.completed(status):
@@ -88,10 +88,6 @@ class Task(object):  # noqa: R0205
             status = self.cli.get_status(task_id)
 
         if status != AlisaTaksStatus.ALISA_TASK_COMPLETED:
-            raise Exception(
-                'task({}) status is {} which means incompleted.'.format(
-                    task_id, status))
+            raise Exception(f'task({task_id}) status is {status} which means incompleted.')
 
-        if resultful:
-            return self.cli.get_results(task_id, READ_RESULTS_BATCH)
-        return []
+        return self.cli.get_results(task_id, READ_RESULTS_BATCH) if resultful else []

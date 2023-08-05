@@ -49,13 +49,12 @@ def query_optflow_job_status(url, record_id, user_id, token):
         A string that indicates the job status. It may be
         "success", "fail", "running", etc.
     """
-    url = "{}?userNumber={}&recordId={}&token={}".format(
-        url, user_id, record_id, token)
+    url = f"{url}?userNumber={user_id}&recordId={record_id}&token={token}"
     response = requests.get(url, headers=OPTFLOW_HTTP_HEADERS)
     response.raise_for_status()
     response_json = response.json()
     if not response_json['success']:
-        raise ValueError('cannot get status of job {}'.format(record_id))
+        raise ValueError(f'cannot get status of job {record_id}')
 
     return response_json['data']['status'].lower()
 
@@ -75,13 +74,12 @@ def query_optflow_job_log(url, record_id, user_id, token, start_line_num):
         A tuple of (logs, end_line_num), where logs are the queried results,
         and end_line_num is the line number of the last queried logs.
     """
-    url = "{}?userNumber={}&recordId={}&token={}".format(
-        url, user_id, record_id, token)
+    url = f"{url}?userNumber={user_id}&recordId={record_id}&token={token}"
     response = requests.get(url, headers=OPTFLOW_HTTP_HEADERS, stream=True)
     response.raise_for_status()
     response_json = response.json()
     if not response_json['success']:
-        raise ValueError('cannot get log of job {}'.format(record_id))
+        raise ValueError(f'cannot get log of job {record_id}')
 
     logs = response_json['data']['logs']
     end_line_num = len(logs)
@@ -195,14 +193,12 @@ def submit_optflow_job(train_table, result_table, fsl_file_content, solver,
         bucket.create_bucket()
         bucket_info = bucket.get_bucket_info()
 
-    fsl_file_id = '{}.fsl'.format(uuid.uuid4())
+    fsl_file_id = f'{uuid.uuid4()}.fsl'
     bucket.put_object(fsl_file_id, fsl_file_content)
     should_delete_object = True
     try:
         bucket.put_object_acl(fsl_file_id, oss2.BUCKET_ACL_PUBLIC_READ)
-        fsl_url = "http://{}.{}/{}".format(bucket_name,
-                                           bucket_info.extranet_endpoint,
-                                           fsl_file_id)
+        fsl_url = f"http://{bucket_name}.{bucket_info.extranet_endpoint}/{fsl_file_id}"
 
         input_params = {
             "input_table": train_table,
@@ -228,16 +224,18 @@ def submit_optflow_job(train_table, result_table, fsl_file_content, solver,
             raise ValueError("Job submission fails")
 
         record_id = response_json['data']['recordId']
-        print('Job submission succeeds, record id {}'.format(record_id))
-        print('FSL URL: {}'.format(fsl_url))
-        print('Please see log on: {}/{}'.format(visual_job_url, record_id))
+        print(f'Job submission succeeds, record id {record_id}')
+        print(f'FSL URL: {fsl_url}')
+        print(f'Please see log on: {visual_job_url}/{record_id}')
         try:
-            success = print_job_log_till_finish(query_job_status_url,
-                                                query_job_log_url, record_id,
-                                                user_id, token)
-            if success:
-                print("Job succeeds. Save solved result in {}.".format(
-                    result_table))
+            if success := print_job_log_till_finish(
+                query_job_status_url,
+                query_job_log_url,
+                record_id,
+                user_id,
+                token,
+            ):
+                print(f"Job succeeds. Save solved result in {result_table}.")
             else:
                 raise ValueError("Job fails.")
         except:  # noqa: E722
@@ -282,9 +280,8 @@ def generate_optflow_fsl_token_when_two_vars(token, columns, result_value_name,
             return '@X[i,j]'
 
         if token in columns:
-            return '@input["%s"][i,j]' % token
+            return f'@input["{token}"][i,j]'
 
-        return token
     else:
         if token == result_value_name:
             raise ValueError("result value name %s should not appear "
@@ -293,12 +290,13 @@ def generate_optflow_fsl_token_when_two_vars(token, columns, result_value_name,
         if token in columns:
             if not group_by:
                 raise ValueError(
-                    "column %s should not appear in non aggregation expression"
-                    % token)
+                    f"column {token} should not appear in non aggregation expression"
+                )
 
-            return '@input["%s"][%s]' % (token, non_aggregation_index)
+            return f'@input["{token}"][{non_aggregation_index}]'
 
-        return token
+
+    return token
 
 
 def generate_optflow_fsl_expr_when_two_vars(columns,
@@ -342,8 +340,7 @@ def generate_optflow_fsl_expr_when_two_vars(columns,
                             group_by=group_by)
 
     if group_by and group_by not in variables:
-        raise ValueError("GROUP BY column %s should be inside variables" %
-                         group_by)
+        raise ValueError(f"GROUP BY column {group_by} should be inside variables")
 
     if group_by == variables[0]:
         outer_range = "for i in @I"
@@ -398,10 +395,7 @@ def generate_optflow_fsl_expr_when_two_vars(columns,
             idx += 1
 
     expr = "".join(result_tokens)
-    if outer_range:
-        return "%s: %s" % (outer_range, expr)
-    else:
-        return expr
+    return f"{outer_range}: {expr}" if outer_range else expr
 
 
 def run_optimize_on_optflow(train_table, columns, variables, variable_type,
@@ -435,13 +429,13 @@ def run_optimize_on_optflow(train_table, columns, variables, variable_type,
     else:
         raise ValueError("direction must be maximize or minimize")
 
+    constraint_expressions = []
     if len(variables) == 2:
         obj_expr = generate_optflow_fsl_expr_when_two_vars(
             columns=columns,
             tokens=objective,
             variables=variables,
             result_value_name=result_value_name)
-        constraint_expressions = []
         for c in constraints:
             tokens = c.get("tokens")
             group_by = c.get("group_by")
@@ -462,11 +456,9 @@ def run_optimize_on_optflow(train_table, columns, variables, variable_type,
             variable_str="@X",
             data_str="@input")
 
-        constraint_expressions = []
         for expr, for_range, iter_vars in c_exprs:
             if for_range:
-                c_expr_str = "for %s in %s: %s" % (",".join(iter_vars),
-                                                   for_range, expr)
+                c_expr_str = f'for {",".join(iter_vars)} in {for_range}: {expr}'
             else:
                 c_expr_str = expr
 

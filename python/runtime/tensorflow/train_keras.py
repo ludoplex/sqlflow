@@ -50,11 +50,10 @@ def keras_compile(estimator, model_params, metric_names):
     # use WITH specified metrics if it's not default.
     if metric_names != ["Accuracy"]:
         keras_metrics = metrics.get_keras_metrics(metric_names)
+    elif model_metrics:
+        keras_metrics = model_metrics
     else:
-        if len(model_metrics) > 0:
-            keras_metrics = model_metrics
-        else:
-            keras_metrics = metrics.get_keras_metrics(["Accuracy"])
+        keras_metrics = metrics.get_keras_metrics(["Accuracy"])
 
     # setting optimizer
     has_none_optimizer = False
@@ -109,22 +108,17 @@ def keras_train_and_save_legacy(estimator, model_params, save, FLAGS,
         classifier, has_none_optimizer = keras_compile(estimator, model_params,
                                                        metric_names)
     except Exception as e:
-        if hasattr(estimator, "sqlflow_train_loop"):
-            sys.stderr.write(
-                "compile keras model failed, ignoring this error "
-                "since the model seems to defined sqlflow_train_loop.")
-            classifier = init_model_with_feature_column(
-                estimator, model_params, has_none_optimizer=True)
-            has_none_optimizer = True
-        else:
+        if not hasattr(estimator, "sqlflow_train_loop"):
             raise e
 
+        sys.stderr.write(
+            "compile keras model failed, ignoring this error "
+            "since the model seems to defined sqlflow_train_loop.")
+        classifier = init_model_with_feature_column(
+            estimator, model_params, has_none_optimizer=True)
+        has_none_optimizer = True
     train_dataset = train_dataset_fn()
-    if val_dataset_fn is not None:
-        validate_dataset = val_dataset_fn()
-    else:
-        validate_dataset = None
-
+    validate_dataset = val_dataset_fn() if val_dataset_fn is not None else None
     if load_pretrained_model:
         # Must run one batch to initialize parameters before load_weights
         inputs, targets = next(iter(train_dataset.take(1)))
@@ -143,7 +137,7 @@ def keras_train_and_save_legacy(estimator, model_params, save, FLAGS,
                              label_meta, epochs, verbose, model_meta,
                              validation_steps, has_none_optimizer)
     if is_pai:
-        print("saving keras model to: %s" % FLAGS.sqlflow_oss_modeldir)
+        print(f"saving keras model to: {FLAGS.sqlflow_oss_modeldir}")
         oss.save_dir(FLAGS.sqlflow_oss_modeldir, save)
         oss.save_file(FLAGS.sqlflow_oss_modeldir, "model_meta.json")
 
@@ -160,9 +154,8 @@ def keras_train_compiled(classifier, save, train_dataset, validate_dataset,
             # remove this argument when PAI fixes this.
             if tf_is_version2():
                 validation_steps = None
-            else:
-                if validate_dataset is None:
-                    validation_steps = None
+            elif validate_dataset is None:
+                validation_steps = None
             history = classifier.fit(train_dataset,
                                      validation_steps=validation_steps,
                                      epochs=epochs if epochs else
@@ -175,8 +168,8 @@ def keras_train_compiled(classifier, save, train_dataset, validate_dataset,
                                      epochs=epochs if epochs else
                                      classifier.default_training_epochs(),
                                      verbose=verbose)
-        train_metrics = dict()
-        val_metrics = dict()
+        train_metrics = {}
+        val_metrics = {}
         for k in history.history.keys():
             if k.startswith("val_"):
                 val_metrics[k] = float(history.history[k][-1])
@@ -184,10 +177,10 @@ def keras_train_compiled(classifier, save, train_dataset, validate_dataset,
                 train_metrics[k] = float(history.history[k][-1])
         print("====== Result for training set: ======")
         for k, v in train_metrics.items():
-            print("%s: %s" % (k, v))
+            print(f"{k}: {v}")
         print("====== Result for validation set: ======")
         for k, v in val_metrics.items():
-            print("%s: %s" % (k, v))
+            print(f"{k}: {v}")
         model_meta["evaluation"] = val_metrics
 
     # write model metadata to model_meta.json
@@ -259,4 +252,4 @@ def keras_train_distributed(classifier,
         fn.write(export_path_str)
     # write model metadata to model_meta.json
     save_metadata("model_meta.json", model_meta)
-    print("Done training, model exported to: %s" % export_path_str)
+    print(f"Done training, model exported to: {export_path_str}")

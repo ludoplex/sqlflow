@@ -32,7 +32,7 @@ class TestEstimatorModels(TestCase):
                                  check=True)
             self.assertEqual(ret.returncode, 0)
         except Exception as e:
-            self.fail("%s" % e)
+            self.fail(f"{e}")
 
     def test_explain(self):
         try:
@@ -44,7 +44,7 @@ class TestEstimatorModels(TestCase):
                                  check=True)
             self.assertEqual(ret.returncode, 0)
         except Exception as e:
-            self.fail("%s" % e)
+            self.fail(f"{e}")
 
     def test_keras(self):
         try:
@@ -63,7 +63,7 @@ class TestEstimatorModels(TestCase):
                                  check=True)
             self.assertEqual(ret.returncode, 0)
         except Exception as e:
-            self.fail("%s" % e)
+            self.fail(f"{e}")
 
 
 if __name__ == '__main__':

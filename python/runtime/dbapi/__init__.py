@@ -29,7 +29,7 @@ def get_connection_object(driver):
         from runtime.dbapi.paiio import PaiIOConnection
         return PaiIOConnection
     else:
-        raise ValueError("unsupported driver type %s" % driver)
+        raise ValueError(f"unsupported driver type {driver}")
 
 
 def connect(uri):

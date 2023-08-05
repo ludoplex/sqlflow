@@ -43,7 +43,7 @@ class MaxCompute:
         compress = tunnel.CompressOption.CompressAlgorithm.ODPS_ZLIB
         inst = conn.execute_sql(select)
         if not inst.is_successful():
-            raise ValueError("execute {} error".format(select))
+            raise ValueError(f"execute {select} error")
 
         with inst.open_reader(tunnel=True, compress_option=compress) as r:
             columns = r._schema.columns
@@ -78,10 +78,7 @@ class MaxCompute:
 
             i = 0
             while i < r.count:
-                if r.count - i < fetch_size:
-                    expected = r.count - i
-                else:
-                    expected = fetch_size
+                expected = r.count - i if r.count - i < fetch_size else fetch_size
                 for row in [[v[1] for v in rec] for rec in r[i:i + expected]]:
                     # NOTE: If there is no label clause in the extended SQL,
                     # the default label value would be -1, the Model

@@ -30,8 +30,7 @@ class ResultSet(six.Iterator):
         fetch_size = 128
         while True:
             rows = self._fetch(fetch_size) or []
-            for r in rows:
-                yield r
+            yield from rows
             if len(rows) < fetch_size:
                 break
 
@@ -167,9 +166,7 @@ class Connection(object):
         if s.startswith("SHOW") and s.find("CREATE") >= 0 or s.find(
                 "DATABASES") >= 0 or s.find("TABLES") >= 0:
             return True
-        if s.startswith("DESC") or s.startswith("EXPLAIN"):
-            return True
-        return False
+        return bool(s.startswith("DESC") or s.startswith("EXPLAIN"))
 
     def execute(self, statement):
         """Execute given statement and return True on success
@@ -183,16 +180,15 @@ class Connection(object):
         rs = None
         try:
             rs = self._get_result_set(statement)
-            if rs.success():
-                # NOTE(sneaxiy): must execute commit!
-                # Otherwise, the `INSERT` statement
-                # would have no effect even though
-                # the connection is closed.
-                self.commit()
-                return True
-            else:
+            if not rs.success():
                 raise Exception('Execute "%s" error\n%s' %
                                 (statement, rs.error()))
+            # NOTE(sneaxiy): must execute commit!
+            # Otherwise, the `INSERT` statement
+            # would have no effect even though
+            # the connection is closed.
+            self.commit()
+            return True
         finally:
             if rs is not None:
                 rs.close()
@@ -206,7 +202,7 @@ class Connection(object):
         Returns:
             A list of (column_name, column_type) tuples
         """
-        rs = self.query("SELECT * FROM %s limit 0" % table_name)
+        rs = self.query(f"SELECT * FROM {table_name} limit 0")
         column_info = rs.column_info()
         rs.close()
         return column_info

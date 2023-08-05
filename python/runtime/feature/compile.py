@@ -49,7 +49,7 @@ def to_package_dtype(dtype, package):
     if dtype == DataType.STRING:
         return package.dtypes.string
 
-    raise ValueError("unsupported data type {}".format(dtype))
+    raise ValueError(f"unsupported data type {dtype}")
 
 
 def compile_feature_column(ir_fc, model_type, package):
@@ -108,7 +108,7 @@ def compile_feature_column(ir_fc, model_type, package):
         if cc is not None:
             cc = compile_feature_column(cc, model_type, package)
 
-        key = "%s_weight" % ir_fc.get_field_desc()[0].name
+        key = f"{ir_fc.get_field_desc()[0].name}_weight"
 
         return fc_package.weighted_categorical_column(categorical_column=cc,
                                                       weight_feature_key=key)
@@ -146,7 +146,7 @@ def compile_feature_column(ir_fc, model_type, package):
                                                  model_type, package)
         return fc_package.indicator_column(category_column)
 
-    raise ValueError("unsupport FeatureColumn %s" % type(ir_fc))
+    raise ValueError(f"unsupport FeatureColumn {type(ir_fc)}")
 
 
 def compile_ir_feature_columns(ir_features, model_type):
@@ -174,7 +174,7 @@ def compile_ir_feature_columns(ir_features, model_type):
     else:
         raise ValueError("only support TensorFlow and XGBoost model")
 
-    all_fcs = dict()
+    all_fcs = {}
     for target, fc_list in ir_features.items():
         fcs = [
             compile_feature_column(fc, model_type, package) for fc in fc_list

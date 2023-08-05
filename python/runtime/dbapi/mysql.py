@@ -67,8 +67,7 @@ class MySQLResultSet(ResultSet):
             # to represent the data type.
             typ = MYSQL_FIELD_TYPE_DICT.get(desc[1])
             if typ is None:
-                raise ValueError("unsupported data type of column {}".format(
-                    desc[0]))
+                raise ValueError(f"unsupported data type of column {desc[0]}")
             columns.append((desc[0], typ))
         self._column_info = columns
         return self._column_info
@@ -107,7 +106,7 @@ class MySQLConnection(Connection):
         pattern = r"^(\w+)://(.*):(.*)@tcp\(([.a-zA-Z0-9\-]*):?([0-9]*)\)/(\w*)(\?.*)?$"  # noqa: W605, E501
         found_result = re.findall(pattern, self.uristr)
         scheme, user, passwd, host, port, db, config = found_result[0]
-        netloc = "{}:{}@{}:{}".format(user, passwd, host, port or 3306)
+        netloc = f"{user}:{passwd}@{host}:{port or 3306}"
         return ParseResult(scheme, netloc, db, "", config.lstrip("?"), "")
 
     def _get_result_set(self, statement):

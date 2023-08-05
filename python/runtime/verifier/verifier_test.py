@@ -20,11 +20,7 @@ from runtime.verifier import fetch_samples, verify_column_name_and_type
 
 
 def length(iterable):
-    n = 0
-    for _ in iterable:
-        n += 1
-
-    return n
+    return sum(1 for _ in iterable)
 
 
 class TestFetchSamples(unittest.TestCase):
@@ -65,7 +61,7 @@ class TestFetchSamples(unittest.TestCase):
         self.assertTrue(np.array_equal(gen.field_types, expect_field_types))
         self.assertEqual(length(gen()), 10)
 
-        gen = fetch_samples(conn, "%s LIMIT 1" % select, n=1000)
+        gen = fetch_samples(conn, f"{select} LIMIT 1", n=1000)
         self.assertTrue(np.array_equal(gen.field_names, expect_field_names))
         self.assertTrue(np.array_equal(gen.field_types, expect_field_types))
         self.assertEqual(length(gen()), 1)
@@ -78,7 +74,7 @@ class TestFetchSamples(unittest.TestCase):
 
 class TestFetchVerifyColumnNameAndType(unittest.TestCase):
     def generate_select(self, table, columns):
-        return "SELECT %s FROM %s" % (",".join(columns), table)
+        return f'SELECT {",".join(columns)} FROM {table}'
 
     @unittest.skipUnless(testing.get_driver() in ["mysql", "hive"],
                          "skip non mysql/hive tests")
@@ -115,12 +111,10 @@ class TestFetchVerifyColumnNameAndType(unittest.TestCase):
         new_table_name = "iris.verifier_test_table"
 
         name_and_type["petal_length"] = "VARCHAR(255)"  # change the data type
-        create_column_str = ",".join(
-            ["%s %s" % (n, t) for n, t in name_and_type.items()])
+        create_column_str = ",".join([f"{n} {t}" for n, t in name_and_type.items()])
 
-        drop_sql = "DROP TABLE IF EXISTS %s" % new_table_name
-        create_sql = "CREATE TABLE %s(%s)" % (new_table_name,
-                                              create_column_str)
+        drop_sql = f"DROP TABLE IF EXISTS {new_table_name}"
+        create_sql = f"CREATE TABLE {new_table_name}({create_column_str})"
         cursor.execute(drop_sql)
         cursor.execute(create_sql)
         with self.assertRaises(ValueError):

@@ -45,7 +45,7 @@ class TestModel(unittest.TestCase):
         m = Model(EstimatorType.XGBOOST, meta)
 
         oss_dir = "unknown/model_test_dnn_classifier/"
-        oss_model_path = "oss://%s/%s" % (bucket.bucket_name, oss_dir)
+        oss_model_path = f"oss://{bucket.bucket_name}/{oss_dir}"
 
         oss.delete_oss_dir_recursive(bucket, oss_dir)
 

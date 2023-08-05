@@ -72,8 +72,9 @@ class DNNClassifier(tf.keras.Model):
         # combines all the data as a dense tensor
         self.feature_layer = tf.keras.layers.DenseFeatures(feature_columns)
         self.hidden_layers = []
-        for hidden_unit in hidden_units:
-            self.hidden_layers.append(tf.keras.layers.Dense(hidden_unit))
+        self.hidden_layers.extend(
+            tf.keras.layers.Dense(hidden_unit) for hidden_unit in hidden_units
+        )
         self.prediction_layer = tf.keras.layers.Dense(n_classes,
                                                       activation='softmax')
 

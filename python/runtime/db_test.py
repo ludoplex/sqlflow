@@ -28,7 +28,7 @@ from runtime.dbapi.mysql import MYSQL_FIELD_TYPE_DICT
 def execute(conn, statement):
     rs = conn.query(statement)
     field_names = [c[0] for c in rs.column_info()]
-    rows = [r for r in rs]
+    rows = list(rs)
     return field_names, rows
 
 
@@ -210,7 +210,7 @@ values(1.0,1,'a','1:1.0 2:2.0','1,2,3',0), (NULL,NULL,NULL,NULL,'1,2,3',1)"""
         label_meta = {"feature_name": "label", "shape": [], "delimiter": ""}
         gen = db_generator(testing.get_singleton_db_connection(),
                            'SELECT * FROM iris.train limit 10', label_meta)
-        self.assertEqual(len([g for g in gen()]), 10)
+        self.assertEqual(len(list(gen())), 10)
 
 
 class TestConnectWithDataSource(TestCase):
@@ -281,7 +281,7 @@ class TestGetTableSchema(TestCase):
             self.assertTrue(np.array_equal(expect, schema))
         elif conn.driver == "maxcompute":
             case_db = os.getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_PROJECT")
-            table = "%s.sqlflow_iris_train" % case_db
+            table = f"{case_db}.sqlflow_iris_train"
             schema = get_table_schema(conn, table)
             expect = [
                 ('sepal_length', 'DOUBLE'),
@@ -313,11 +313,10 @@ class TestMySQLFieldType(TestCase):
         conn = connect_with_data_source(testing.get_datasource())
 
         table_name = "iris.test_mysql_field_type_table"
-        drop_table_sql = "DROP TABLE IF EXISTS %s" % table_name
-        create_table_sql = "CREATE TABLE IF NOT EXISTS " + \
-                           table_name + "(a %s)"
-        select_sql = "SELECT * FROM %s" % table_name
+        create_table_sql = f"CREATE TABLE IF NOT EXISTS {table_name}(a %s)"
+        select_sql = f"SELECT * FROM {table_name}"
 
+        drop_table_sql = f"DROP TABLE IF EXISTS {table_name}"
         for int_type, str_type in MYSQL_FIELD_TYPE_DICT.items():
             if str_type in ["VARCHAR", "CHAR"]:
                 str_type += "(255)"
@@ -332,8 +331,7 @@ class TestMySQLFieldType(TestCase):
             cursor.close()
             conn.execute(drop_table_sql)
 
-            self.assertEqual(int_type_actual, int_type,
-                             "%s not match" % str_type)
+            self.assertEqual(int_type_actual, int_type, f"{str_type} not match")
 
 
 class TestLimitSelect(TestCase):
@@ -356,19 +354,19 @@ class TestQuery(TestCase):
     def test_query(self):
         conn = connect_with_data_source(testing.get_datasource())
         rs = conn.query("select * from iris.train limit 1")
-        rows = [row for row in rs]
+        rows = list(rs)
         self.assertEqual(1, len(rows))
 
         conn.execute("drop table if exists A")
         conn.execute("create table A(a int);")
         conn.execute("insert into A values(1)")
         rs = conn.query("select * from A;")
-        rows = [row for row in rs]
+        rows = list(rs)
         self.assertEqual(1, len(rows))
 
         conn.query("truncate table A")
         rs = conn.query("select * from A;")
-        rows = [row for row in rs]
+        rows = list(rs)
         self.assertEqual(0, len(rows))
         columns = rs.column_info()
         self.assertEqual(1, len(columns))

@@ -31,7 +31,7 @@ from runtime.step.tensorflow.predict import predict_step as pred
 
 class TestTensorFlowLocalSubmitter(unittest.TestCase):
     def get_table_row_count(self, conn, table):
-        rs = conn.query("SELECT COUNT(*) FROM %s" % table)
+        rs = conn.query(f"SELECT COUNT(*) FROM {table}")
         ret = list(rs)
         rs.close()
         self.assertEqual(len(ret), 1)
@@ -129,8 +129,8 @@ class TestTensorFlowLocalSubmitter(unittest.TestCase):
                      result_column_names)
 
         eval_schema = self.get_table_schema(conn, "iris.evaluate_result_table")
-        eval_schema = set([k.lower() for k in eval_schema.keys()])
-        self.assertEqual(eval_schema, set(['loss', 'accuracy']))
+        eval_schema = {k.lower() for k in eval_schema.keys()}
+        self.assertEqual(eval_schema, {'loss', 'accuracy'})
 
         with temp_file.TemporaryDirectory(as_cwd=True):
             feature_column_names = [
@@ -146,6 +146,6 @@ class TestTensorFlowLocalSubmitter(unittest.TestCase):
                                                "iris.explain_result_table")
         self.assertEqual(
             explain_schema.keys(),
-            set(['petal_length', 'petal_width', 'sepal_length',
-                 'sepal_width']))
+            {'petal_length', 'petal_width', 'sepal_length', 'sepal_width'},
+        )
         conn.close()

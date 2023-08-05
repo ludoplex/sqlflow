@@ -130,7 +130,7 @@ class MaxComputeConnection(Connection):
         return [(c.name, str(c.type).upper()) for c in schema.columns]
 
     def persist_table(self, table):
-        sql = "ALTER TABLE %s DISABLE LIFECYCLE;" % table
+        sql = f"ALTER TABLE {table} DISABLE LIFECYCLE;"
         self.execute(sql)
 
     def write_table(self,

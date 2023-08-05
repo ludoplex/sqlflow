@@ -24,30 +24,30 @@ class SQLFlowDiagnostic(Exception):
 def load_pretrained_model_estimator(estimator,
                                     model_params,
                                     warm_start_from=None):
-    if warm_start_from is not None:
-        estimator_func = estimator.__init__ if inspect.isclass(
-            estimator) else estimator
-        estimator_spec = inspect.getargspec(estimator_func)
-        # The constructor of Estimator contains named parameter
-        # "warm_start_from"
-        warm_start_from_key = "warm_start_from"
-        if warm_start_from_key in estimator_spec.args:
-            warm_start_from = os.path.abspath(warm_start_from)
+    if warm_start_from is None:
+        return
+    estimator_func = estimator.__init__ if inspect.isclass(
+        estimator) else estimator
+    estimator_spec = inspect.getargspec(estimator_func)
+    # The constructor of Estimator contains named parameter
+    # "warm_start_from"
+    warm_start_from_key = "warm_start_from"
+    if warm_start_from_key not in estimator_spec.args:
+        raise NotImplementedError(
+            f"Incremental training is not supported in {estimator}"
+        )
+    warm_start_from = os.path.abspath(warm_start_from)
 
-            if is_tf_estimator(estimator):
-                with open("exported_path", "r") as fid:
-                    exported_path = str(fid.read())
+    if is_tf_estimator(estimator):
+        with open("exported_path", "r") as fid:
+            exported_path = str(fid.read())
 
-                exported_path = os.path.abspath(exported_path)
-                assert exported_path.startswith(
-                    warm_start_from), "The exported path is incorrect"
-                warm_start_from = exported_path
+        exported_path = os.path.abspath(exported_path)
+        assert exported_path.startswith(
+            warm_start_from), "The exported path is incorrect"
+        warm_start_from = exported_path
 
-            model_params[warm_start_from_key] = warm_start_from
-        else:
-            raise NotImplementedError(
-                "Incremental training is not supported in {}".format(
-                    estimator))
+    model_params[warm_start_from_key] = warm_start_from
 
 
 def init_model(estimator, model_params):
@@ -65,10 +65,15 @@ def init_model(estimator, model_params):
         if re_missing_args:
             raise SQLFlowDiagnostic(
                 "{0} missing {1} required attribute: {2}".format(
-                    name, re_missing_args.group(1), re_missing_args.group(2)))
+                    name, re_missing_args[1], re_missing_args[2]
+                )
+            )
         elif re_unexpected_args:
-            raise SQLFlowDiagnostic("%s get an unexpected attribute: %s", name,
-                                    re_unexpected_args.group(1))
+            raise SQLFlowDiagnostic(
+                "%s get an unexpected attribute: %s",
+                name,
+                re_unexpected_args[1],
+            )
         else:
             raise SQLFlowDiagnostic("{0} attribute {1}".format(
                 name,

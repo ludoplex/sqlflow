@@ -48,8 +48,14 @@ def plot_and_save(plotfunc,
     plt.savefig(filename, bbox_inches='tight')
 
     if oss_dest:
-        copyfileobj(filename + '.png', oss_dest, oss_ak, oss_sk, oss_endpoint,
-                    oss_bucket_name)
+        copyfileobj(
+            f'{filename}.png',
+            oss_dest,
+            oss_ak,
+            oss_sk,
+            oss_endpoint,
+            oss_bucket_name,
+        )
     else:
         # NOTE(weiguoz), I failed test on the PAI platform here.
         # If we plan to support plotille_text_backend on PAI, please test it.

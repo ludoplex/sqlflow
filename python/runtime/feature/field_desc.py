@@ -38,7 +38,7 @@ class DataType(object):
         if dtype == DataType.STRING:
             return "string"
 
-        raise ValueError("unsupported data type {}".format(dtype))
+        raise ValueError(f"unsupported data type {dtype}")
 
     @staticmethod
     def to_db_field_type(driver, dtype):
@@ -60,11 +60,8 @@ class DataType(object):
             return "DOUBLE"
 
         if dtype == DataType.STRING:
-            if driver == "mysql":
-                return "VARCHAR(255)"
-            return "STRING"
-
-        raise ValueError("unsupported data type {}".format(dtype))
+            return "VARCHAR(255)" if driver == "mysql" else "STRING"
+        raise ValueError(f"unsupported data type {dtype}")
 
 
 # DataFormat is used in FieldDesc to represent the data format
@@ -133,11 +130,7 @@ class FieldDesc(object):
         Returns:
             A Python dict.
         """
-        vocab = None
-        if self.vocabulary is not None:
-            vocab = list(self.vocabulary)
-            vocab.sort()
-
+        vocab = sorted(self.vocabulary) if self.vocabulary is not None else None
         if dtype_to_string:
             dtype = DataType.to_string(self.dtype)
             dtype_weight = DataType.to_string(self.dtype_weight)

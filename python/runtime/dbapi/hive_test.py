@@ -37,7 +37,7 @@ class TestHiveConnection(TestCase):
 
         rs = conn.query("select * from train limit 1")
         self.assertTrue(rs.success())
-        rows = [r for r in rs]
+        rows = list(rs)
         self.assertEqual(1, len(rows))
 
         rs = conn.query("select * from train limit 20")
@@ -48,7 +48,7 @@ class TestHiveConnection(TestCase):
                           ('petal_length', 'FLOAT'), ('petal_width', 'FLOAT'),
                           ('class', 'INT')], col_info)
 
-        rows = [r for r in rs]
+        rows = list(rs)
         self.assertTrue(20, len(rows))
 
     def test_exec(self):
@@ -59,7 +59,7 @@ class TestHiveConnection(TestCase):
         self.assertTrue(rs)
         rs = conn.query("select * from test_exec")
         self.assertTrue(rs.success())
-        rows = [r for r in rs]
+        rows = list(rs)
         self.assertTrue(2, len(rows))
         rs = conn.execute("drop table test_exec")
         self.assertTrue(rs)

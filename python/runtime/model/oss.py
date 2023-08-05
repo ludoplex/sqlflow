@@ -26,7 +26,7 @@ SQLFLOW_MODELS_BUCKET = "sqlflow-models"
 
 
 def remove_bucket_prefix(oss_uri):
-    return oss_uri.replace("oss://%s/" % SQLFLOW_MODELS_BUCKET, "")
+    return oss_uri.replace(f"oss://{SQLFLOW_MODELS_BUCKET}/", "")
 
 
 def get_models_bucket():
@@ -47,8 +47,7 @@ def get_bucket(name, ak=None, sk=None, endpoint=None):
         raise ValueError(
             "must configure SQLFLOW_OSS_MODEL_ENDPOINT when submitting to PAI")
     auth = oss2.Auth(ak, sk)
-    bucket = oss2.Bucket(auth, endpoint, name)
-    return bucket
+    return oss2.Bucket(auth, endpoint, name)
 
 
 def copyfileobj(source, dest, ak, sk, endpoint, bucket_name):
@@ -64,14 +63,13 @@ def copyfileobj(source, dest, ak, sk, endpoint, bucket_name):
 def get_oss_path_from_uri(oss_model_dir, file_name):
     # oss_model_dir is of format: oss://bucket/path/to/dir/
     assert (oss_model_dir.startswith("oss://"))
-    oss_file_path = "/".join([oss_model_dir.rstrip("/"), file_name])
-    return oss_file_path
+    return "/".join([oss_model_dir.rstrip("/"), file_name])
 
 
 def mkdir(bucket, oss_dir):
     assert (oss_dir.startswith("oss://"))
     if not oss_dir.endswith("/"):
-        oss_dir = oss_dir + "/"
+        oss_dir = f"{oss_dir}/"
     path = remove_bucket_prefix(oss_dir)
     has_dir = True
     try:
@@ -100,16 +98,13 @@ def delete_oss_dir_recursive(bucket, directory):
         raise SQLFlowDiagnostic("dir to delete must end with /")
 
     loc = bucket.list_objects(prefix=directory, delimiter="/")
-    object_path_list = []
-    for obj in loc.object_list:
-        object_path_list.append(obj.key)
-
+    object_path_list = [obj.key for obj in loc.object_list]
     # delete sub dir first
     if len(loc.prefix_list) > 0:
         for sub_prefix in loc.prefix_list:
             delete_oss_dir_recursive(bucket, sub_prefix)
     # empty list param will raise error
-    if len(object_path_list) > 0:
+    if object_path_list:
         bucket.batch_delete_objects(object_path_list)
 
 
@@ -260,11 +255,7 @@ def load_metas(oss_model_dir, file_name):
 
 
 def load_oss_model(oss_model_dir, estimator):
-    is_estimator = is_tf_estimator(estimator)
-    # Keras single node is using h5 format to save the model, no need to deal
-    # with export model format. Keras distributed mode will use estimator, so
-    # this is also needed.
-    if is_estimator:
+    if is_estimator := is_tf_estimator(estimator):
         load_file(oss_model_dir, "exported_path")
 
     # NOTE(typhoonzero): directory "model_save" is hardcoded in
@@ -286,13 +277,12 @@ def save_oss_model(oss_model_dir, model_name, is_estimator,
             saved_model_path = saved_model_path.decode("utf-8")
         save_dir(oss_model_dir, saved_model_path)
         save_file(oss_model_dir, "exported_path")
+    elif num_workers > 1:
+        FLAGS = tf.app.flags.FLAGS
+        if FLAGS.task_index == 0:
+            save_file(oss_model_dir, "exported_path")
     else:
-        if num_workers > 1:
-            FLAGS = tf.app.flags.FLAGS
-            if FLAGS.task_index == 0:
-                save_file(oss_model_dir, "exported_path")
-        else:
-            save_dir(oss_model_dir, "model_save")
+        save_dir(oss_model_dir, "model_save")
 
     save_metas(oss_model_dir, num_workers, "tensorflow_model_desc", model_name,
                feature_column_names, feature_column_names_map, feature_metas,

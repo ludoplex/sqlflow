@@ -62,19 +62,20 @@ def xgb_dataset(datasource,
         os.mkdir(raw_data_dir)
 
     if is_pai:
-        for dmatrix in pai_dataset(fn,
-                                   feature_metas,
-                                   feature_column_names,
-                                   label_meta,
-                                   pai_table,
-                                   pai_single_file,
-                                   cache,
-                                   rank,
-                                   nworkers,
-                                   batch_size=batch_size,
-                                   feature_column_code=feature_column_code,
-                                   raw_data_dir=raw_data_dir):
-            yield dmatrix
+        yield from pai_dataset(
+            fn,
+            feature_metas,
+            feature_column_names,
+            label_meta,
+            pai_table,
+            pai_single_file,
+            cache,
+            rank,
+            nworkers,
+            batch_size=batch_size,
+            feature_column_code=feature_column_code,
+            raw_data_dir=raw_data_dir,
+        )
         return
 
     conn = db.connect_with_data_source(datasource)
@@ -146,27 +147,26 @@ def dump_dmatrix(filename,
 
             row_data = []
             offset = 0
-            for i, v in enumerate(features):
+            for v in features:
                 if len(v) == 1:  # dense feature
                     value = v[0]
                     if isinstance(value, np.ndarray):
                         value = value.reshape((-1, ))
-                        row_data.extend([
-                            "{}:{}".format(i + offset, item)
-                            for i, item in enumerate(value)
-                        ])
+                        row_data.extend([f"{i + offset}:{item}" for i, item in enumerate(value)])
                         offset += value.size
                     else:
-                        row_data.append("{}:{}".format(offset, value))
+                        row_data.append(f"{offset}:{value}")
                         offset += 1
                 else:  # sparse feature
                     indices = v[0]
                     value = v[1].reshape((-1))
                     dense_size = np.prod(v[2])
-                    row_data.extend([
-                        "{}:{}".format(i + offset, item)
-                        for i, item in six.moves.zip(indices, value)
-                    ])
+                    row_data.extend(
+                        [
+                            f"{i + offset}:{item}"
+                            for i, item in six.moves.zip(indices, value)
+                        ]
+                    )
                     offset += dense_size
 
             if has_label:
@@ -200,7 +200,8 @@ def load_dmatrix(filename):
     See https://github.com/sql-machine-learning/sqlflow/issues/2326
     in detailed.
     '''
-    if xgb.rabit.get_world_size() > 1:
+    if xgb.rabit.get_world_size() <= 1:
+        return xgb.DMatrix(filename, missing=XGBOOST_NULL_MAGIC)
         # XGBoost DMatrix supports to load data from file path like
         # "train.txt#train.txt.cache". The actual data path is
         # "train.txt", while "train.txt.cache" is used as the
@@ -208,22 +209,20 @@ def load_dmatrix(filename):
         # is not a valid file path, and it is not supported by
         # load_svmlight_file(s). So we remove the suffix "#..."
         # here before loading the data using load_svmlight_file(s).
-        if '#' in filename:
-            filename = filename[0:filename.index('#')]
+    if '#' in filename:
+        filename = filename[:filename.index('#')]
 
-        if os.path.isdir(filename):
-            files = [os.path.join(filename, f) for f in os.listdir(filename)]
-            assert len(files) > 0, "No data file found in {}".format(filename)
+    if os.path.isdir(filename):
+        files = [os.path.join(filename, f) for f in os.listdir(filename)]
+        assert files, f"No data file found in {filename}"
 
-            ret = load_svmlight_files(files, zero_based=True)
-            X = vstack(ret[0::2])
-            y = np.concatenate(ret[1::2], axis=0)
-            return xgb.DMatrix(X, y, missing=XGBOOST_NULL_MAGIC)
-        else:
-            ret = load_svmlight_file(filename, zero_based=True)
-            return xgb.DMatrix(ret[0], ret[1], missing=XGBOOST_NULL_MAGIC)
+        ret = load_svmlight_files(files, zero_based=True)
+        X = vstack(ret[::2])
+        y = np.concatenate(ret[1::2], axis=0)
+        return xgb.DMatrix(X, y, missing=XGBOOST_NULL_MAGIC)
     else:
-        return xgb.DMatrix(filename, missing=XGBOOST_NULL_MAGIC)
+        ret = load_svmlight_file(filename, zero_based=True)
+        return xgb.DMatrix(ret[0], ret[1], missing=XGBOOST_NULL_MAGIC)
 
 
 def get_pai_table_slice_count(table, nworkers, batch_size):
@@ -232,15 +231,16 @@ def get_pai_table_slice_count(table, nworkers, batch_size):
 
     row_cnt = PaiIOConnection.from_table(table).get_table_row_num()
 
-    assert row_cnt >= nworkers, "Data number {} should not " \
-                                "less than worker number {}"\
-        .format(row_cnt, nworkers)
+    assert (
+        row_cnt >= nworkers
+    ), f"Data number {row_cnt} should not less than worker number {nworkers}"
 
     slice_num_per_worker = max(int(row_cnt / (nworkers * batch_size)), 1)
     slice_count = slice_num_per_worker * nworkers
 
-    print('row_cnt = {}, slice_count = {}, nworkers = {}'.format(
-        row_cnt, slice_count, nworkers))
+    print(
+        f'row_cnt = {row_cnt}, slice_count = {slice_count}, nworkers = {nworkers}'
+    )
 
     return slice_count
 
@@ -263,7 +263,7 @@ def pai_dataset(filename,
     import queue
     dname = filename
     if single_file:
-        dname = filename + '.dir'
+        dname = f'{filename}.dir'
     if os.path.exists(dname):
         shutil.rmtree(dname, ignore_errors=True)
 
@@ -316,11 +316,11 @@ def pai_dataset(filename,
     if single_file:
 
         def merge_files(dir_name, file_name):
-            cmd = "cat %s/*.txt > %s" % (dir_name, file_name)
+            cmd = f"cat {dir_name}/*.txt > {file_name}"
             p = Popen(cmd, shell=True, stdin=PIPE, stderr=PIPE)
             out, err = p.communicate()
             if err:
-                raise Exception("merge data files failed: %s" % err)
+                raise Exception(f"merge data files failed: {err}")
 
         merge_files(dname, filename)
         if raw_data_dir:
@@ -348,7 +348,7 @@ def pai_download_table_data_worker(dname, feature_metas, feature_column_names,
                 feature_column_names,
                 *feature_column_transformers["feature_columns"])
     else:
-        feature_column_transformers = eval('[{}]'.format(feature_column_code))
+        feature_column_transformers = eval(f'[{feature_column_code}]')
         transform_fn = \
             xgboost_extended.feature_column.ComposedColumnTransformer(
                 feature_column_names, *feature_column_transformers)
@@ -356,7 +356,7 @@ def pai_download_table_data_worker(dname, feature_metas, feature_column_names,
     conn = PaiIOConnection.from_table(pai_table, slice_id, slice_count)
     gen = db.db_generator(conn, None, label_meta=label_meta)()
     selected_cols = db.selected_cols(conn, None)
-    filename = "{}/{}.txt".format(dname, slice_id)
+    filename = f"{dname}/{slice_id}.txt"
     dump_dmatrix(filename,
                  gen,
                  feature_column_names,

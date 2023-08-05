@@ -60,8 +60,7 @@ class TestFeatureColumnCompilation(unittest.TestCase):
             self.assertEqual(compiled_cc.key, 'c1')
             self.assertEqual(compiled_cc.num_buckets, 128)
 
-        cc = CategoryIDColumn(FieldDesc(name='c1', vocabulary=set(['a', 'b'])),
-                              128)
+        cc = CategoryIDColumn(FieldDesc(name='c1', vocabulary={'a', 'b'}), 128)
         for model_type in [TENSORFLOW, XGBOOST]:
             compiled_cc = self.compile_fc(cc, model_type)
             vocab = sorted(compiled_cc.vocabulary_list)

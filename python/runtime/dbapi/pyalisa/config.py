@@ -40,7 +40,7 @@ class Config(object):
         required = ["env", "with", "curr_project"]
         for k in required:
             if k not in kvs:
-                raise ValueError("Given dsn does not contain: %s" % k)
+                raise ValueError(f"Given dsn does not contain: {k}")
         # extract the param if it's only has one element
         for k, v in kvs.items():
             if len(v) == 1:

@@ -16,8 +16,5 @@ import tensorflow as tf
 
 # TODO(shendiaomo): Remove after we fully upgrade to TF2.0
 def tf_is_version2():
-    is_version2 = True
     version_parts = tf.__version__.split(".")
-    if int(version_parts[0]) == 1:
-        is_version2 = False
-    return is_version2
+    return int(version_parts[0]) != 1

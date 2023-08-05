@@ -51,9 +51,7 @@ class FigureCanvasPlotille(FigureCanvasAgg):
                 canvas = manager.canvas
                 canvas.draw()
                 string = canvas.to_txt()
-                print(string,
-                      file=open(fname + '.txt', 'w', encoding="utf-8"),
-                      end='')
+                print(string, file=open(f'{fname}.txt', 'w', encoding="utf-8"), end='')
         finally:
             pass
 

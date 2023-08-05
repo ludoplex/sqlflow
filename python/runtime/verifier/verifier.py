@@ -84,10 +84,9 @@ def verify_column_name_and_type(conn, train_select, pred_select, label):
 
         pred_type = pred_schema.get(name)
         if pred_type is None:
-            raise ValueError(
-                "the predict statement doesn't contain column %s" % name)
+            raise ValueError(f"the predict statement doesn't contain column {name}")
 
         if pred_type != train_type:
             raise ValueError(
-                "field %s type dismatch %s(predict) vs %s(train)" %
-                (name, pred_type, train_type))
+                f"field {name} type dismatch {pred_type}(predict) vs {train_type}(train)"
+            )

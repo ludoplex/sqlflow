@@ -36,7 +36,7 @@ class TestALPSTrain(TestCase):
                                  check=True)
             self.assertEqual(ret.returncode, 0)
         except:  # noqa: E722
-            self.fail("%s" % ret.stderr)
+            self.fail(f"{ret.stderr}")
 
 
 if __name__ == '__main__':
